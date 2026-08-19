@@ -213,41 +213,39 @@ export function ShiftsScreen({
         ) : null}
       </div>
 
-      {/* Week summary */}
-      <Card className="p-4">
-        <div className="flex items-end justify-between">
-          <div>
-            <div className="t-micro text-muted uppercase">This week</div>
-            <div className="tabular font-extrabold text-ink text-[27px] leading-none tracking-[-0.035em] mt-1">
-              {hm(weekTotals.workedSecs)}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="t-micro text-muted uppercase">Earned</div>
-            <AnimatedNumber
-              value={weekTotals.totalAgorot}
-              format={(v) => money(v, settings.currencySymbol)}
-              className="block tabular font-extrabold text-brand text-[27px] leading-none tracking-[-0.035em] mt-1"
+      {/* Week summary, as one line rather than a card.
+          Four stacked rows inside a raised surface made the week total compete with the
+          shift list right beneath it. The same three facts — hours, pay, progress — fit
+          on a single row with the goal bar doubling as the divider under it. */}
+      <div className="mb-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="tabular font-bold text-[21px] tracking-[-0.03em] text-ink">
+            {hm(weekTotals.workedSecs)}
+            <span className="t-small text-muted font-medium ml-1.5 tracking-normal">
+              this week
+            </span>
+          </span>
+          <AnimatedNumber
+            value={weekTotals.totalAgorot}
+            format={(v) => money(v, settings.currencySymbol)}
+            className="tabular font-bold text-[21px] tracking-[-0.03em] text-brand"
+          />
+        </div>
+
+        {settings.weeklyGoalHours > 0 ? (
+          <div className="h-[3px] rounded-full bg-sunken mt-2.5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-brand"
+              style={{
+                width: `${Math.min(100, (weekTotals.workedSecs / (settings.weeklyGoalHours * 3600)) * 100)}%`,
+                transition: 'width var(--dur-slow) var(--ease-out-expo)',
+              }}
             />
           </div>
-        </div>
-        {settings.weeklyGoalHours > 0 ? (
-          <>
-            <div className="h-1.5 rounded-full bg-sunken mt-3.5 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-brand"
-                style={{
-                  width: `${Math.min(100, (weekTotals.workedSecs / (settings.weeklyGoalHours * 3600)) * 100)}%`,
-                  transition: 'width var(--dur-slow) var(--ease-out-expo)',
-                }}
-              />
-            </div>
-            <div className="t-small text-muted mt-1.5 tabular">
-              {hm(weekTotals.workedSecs)} of {settings.weeklyGoalHours}h goal
-            </div>
-          </>
-        ) : null}
-      </Card>
+        ) : (
+          <div className="h-px bg-hairline mt-2.5" />
+        )}
+      </div>
 
       <QuickLog day={cursor} onPick={logPattern} onCustom={() => onAddShift(cursor)} />
 
