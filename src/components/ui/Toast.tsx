@@ -38,7 +38,7 @@ export function Toast({ toast, onDismiss }: { toast: ToastState | null; onDismis
   return (
     <div
       className="fixed inset-x-0 z-40 flex justify-center px-4 pointer-events-none"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 78px)' }}
+      style={{ bottom: 'calc(max(0.5rem, env(safe-area-inset-bottom)) + var(--nav-h) + 0.75rem)' }}
       role="status"
       aria-live="polite"
     >

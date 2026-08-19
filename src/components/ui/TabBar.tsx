@@ -23,10 +23,15 @@ export function TabBar({
 }) {
   return (
     <nav
-      className="shrink-0 z-30 bg-surface/80 backdrop-blur-2xl border-t border-hairline"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="shrink-0 z-30 bg-surface/85 backdrop-blur-2xl border-t border-hairline"
+      style={{
+        // max() rather than the raw inset: on a home-indicator iPhone the inset supplies
+        // the clearance, but in desktop Safari and on older phones it is 0, which left the
+        // labels sitting right on the screen edge.
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}
     >
-      <div className="flex items-stretch px-1 pt-1.5 pb-1">
+      <div className="flex items-stretch px-1 pt-2">
         {TABS.map(({ key, label, Icon }) => {
           const isActive = key === active
           return (

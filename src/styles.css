@@ -90,6 +90,10 @@
 
   /* --- Type ---------------------------------------------------------------- */
   --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+
+  /* Height of the bottom tab bar, excluding the safe-area inset. Anything that has to
+     float above the nav (the toast) positions off this rather than a guessed number. */
+  --nav-h: 54px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -153,6 +157,30 @@
   body,
   #root {
     height: 100%;
+  }
+
+  /**
+   * The phone frame.
+   *
+   * `100dvh` rather than `100vh` is the whole fix for iOS. `100vh` on iPhone reports the
+   * viewport as if Safari's toolbars were hidden, so the frame is taller than what you can
+   * actually see and the bottom nav sits below the fold until you scroll. `dvh` tracks the
+   * *visible* viewport and updates as the toolbars collapse. `vh` stays as the fallback for
+   * browsers without dvh support.
+   */
+  .app-frame {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  @media (min-width: 640px) {
+    .app-frame {
+      height: min(880px, calc(100dvh - 3rem));
+      margin-block: 1.5rem;
+      border-radius: 38px;
+      overflow: hidden;
+      box-shadow: 0 40px 100px -20px rgba(10, 10, 40, 0.5);
+    }
   }
 
   body {

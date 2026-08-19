@@ -253,7 +253,7 @@ export function TimerScreen({
 }
 
 export function Screen({ children }: { children: React.ReactNode }) {
-  return <div className="px-5 pt-4 pb-8 animate-screen-in">{children}</div>
+  return <div className="px-5 pt-4 pb-6 animate-screen-in">{children}</div>
 }
 
 export function Header({ title, action }: { title: string; action?: React.ReactNode }) {

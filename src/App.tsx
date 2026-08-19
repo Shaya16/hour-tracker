@@ -63,7 +63,13 @@ export default function App() {
     <Shell>
       {/* `key` remounts on tab change, which re-runs the entrance animation. Without it
           the screens would hard-cut and the app would feel like a set of web pages. */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden" key={tab}>
+      {/* `min-h-0` is load-bearing: a flex child defaults to min-height:auto, so without
+          it this pane refuses to shrink below its content, the frame grows past the
+          viewport, and the tab bar is pushed off the bottom of the screen. */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+        key={tab}
+      >
         {tab === 'timer' ? (
           <TimerScreen onEditShift={openShift} onAddJob={() => setEditingJob('new')} />
         ) : null}
@@ -109,12 +115,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full flex justify-center">
       <div
-        className={
-          'w-full max-w-[460px] bg-canvas flex flex-col relative ' +
-          'min-h-screen ' +
-          'sm:min-h-[min(900px,100vh-3rem)] sm:my-6 sm:rounded-[38px] sm:overflow-hidden ' +
-          'sm:shadow-[0_40px_100px_-20px_rgba(10,10,40,0.5)] sm:ring-1 sm:ring-black/5'
-        }
+        className="app-frame w-full max-w-[460px] bg-canvas flex flex-col relative sm:ring-1 sm:ring-black/5"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         {children}
