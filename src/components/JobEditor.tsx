@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ConfirmSheet, Sheet } from './ui/Sheet'
 import { TrashIcon } from './ui/icons'
 import { Button, Divider, Field, Input, Row, Toggle, cx } from './ui/primitives'
@@ -39,11 +39,28 @@ export function JobEditor({ jobId, onClose }: { jobId: string | null; onClose: (
   const [draft, setDraft] = useState<Draft | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  /**
+   * Seed the form once per job, not once per render of the store.
+   *
+   * This effect must not depend on `jobs`. A background sync hands the store a new array
+   * reference every few seconds, and depending on it here re-ran this effect and reset the
+   * draft to blanks — deleting whatever the user was in the middle of typing.
+   */
+  const seededFor = useRef<string | null>(null)
+
   useEffect(() => {
     if (!jobId) {
       setDraft(null)
+      seededFor.current = null
       return
     }
+    if (seededFor.current === jobId) return
+    seededFor.current = jobId
+
+    // Read non-reactively: this is a starting value, not a live subscription.
+    const { jobs } = useStore.getState()
+    const existing = jobs.find((j) => j.id === jobId)
+
     if (isNew) {
       setDraft({
         name: '',
@@ -72,7 +89,7 @@ export function JobEditor({ jobId, onClose }: { jobId: string | null; onClose: (
       t2After: existing.otTier2AfterMins > 0 ? String(existing.otTier2AfterMins / 60) : '',
       t2Mult: String(existing.otTier2Mult),
     })
-  }, [jobId, isNew, existing, jobs])
+  }, [jobId, isNew])
 
   if (!jobId || !draft) return null
 

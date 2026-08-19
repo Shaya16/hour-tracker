@@ -78,14 +78,32 @@ function nextColor(jobs: Job[]): JobColorKey {
   return JOB_COLOR_ORDER.find((c) => !used.has(c)) ?? 'brand'
 }
 
-/** Last-write-wins by `updatedAt`; ties keep the incoming record. */
+/**
+ * Last-write-wins by `updatedAt`.
+ *
+ * Returns the *original* array when nothing actually changed. That identity matters far
+ * more than it looks: a sync runs every few seconds, and if this always allocated a fresh
+ * array, every component selecting `jobs` or `shifts` would re-render on each one — which
+ * silently wiped any half-typed edit form whose effect depended on those arrays.
+ *
+ * Ties keep the local copy. An equal `updatedAt` means the same logical version, so there
+ * is nothing to gain by swapping it and a re-render to lose.
+ */
 function mergeById<T extends { id: string; updatedAt: number }>(local: T[], remote: T[]): T[] {
+  if (remote.length === 0) return local
+
   const byId = new Map(local.map((r) => [r.id, r]))
+  let changed = false
+
   for (const r of remote) {
     const existing = byId.get(r.id)
-    if (!existing || r.updatedAt >= existing.updatedAt) byId.set(r.id, r)
+    if (!existing || r.updatedAt > existing.updatedAt) {
+      byId.set(r.id, r)
+      changed = true
+    }
   }
-  return [...byId.values()]
+
+  return changed ? [...byId.values()] : local
 }
 
 export const useStore = create<State>()(
@@ -209,13 +227,18 @@ export const useStore = create<State>()(
       setLastPushMark: (lastPushMark) => set({ lastPushMark }),
       setOnboarded: (onboarded) => set({ onboarded }),
 
+      // Bail out entirely when a sync brought nothing new, so subscribers stay quiet.
       mergeRemote: ({ jobs, shifts, settings }) =>
-        set((s) => ({
-          jobs: mergeById(s.jobs, jobs),
-          shifts: mergeById(s.shifts, shifts),
-          settings:
-            settings && settings.updatedAt >= s.settings.updatedAt ? settings : s.settings,
-        })),
+        set((s) => {
+          const nextJobs = mergeById(s.jobs, jobs)
+          const nextShifts = mergeById(s.shifts, shifts)
+          const nextSettings =
+            settings && settings.updatedAt > s.settings.updatedAt ? settings : s.settings
+          if (nextJobs === s.jobs && nextShifts === s.shifts && nextSettings === s.settings) {
+            return s
+          }
+          return { jobs: nextJobs, shifts: nextShifts, settings: nextSettings }
+        }),
 
       replaceAll: ({ jobs, shifts, settings }) =>
         set((s) => ({

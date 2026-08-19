@@ -16,16 +16,37 @@ import { useStore } from './store'
  */
 const PUSH_OVERLAP_MS = 120_000
 
+/** Wait this long after an edit before pushing, so a burst of typing sends once. */
+const DEBOUNCE_MS = 4000
+
+/**
+ * Floor on how often a *pull with nothing to push* may run.
+ *
+ * Without this, every window focus fired a request. Switching between the app and
+ * anything else a few times a minute turned into a steady drip of pointless calls —
+ * pointless because if there is nothing local to push, the only thing a pull can
+ * discover is an edit made on another device, which is not a per-second event.
+ */
+const IDLE_POLL_GAP_MS = 90_000
+
+/** Regular background poll, to pick up edits made on the other device. */
+const POLL_INTERVAL_MS = 5 * 60_000
+
 let inFlight: Promise<void> | null = null
 let queued = false
+let lastAttemptAt = 0
 
-export async function syncNow(): Promise<void> {
+/**
+ * @param force Bypass the idle throttle. Used by the explicit "Sync now" button and
+ *              immediately after signing in, where the user is waiting on the result.
+ */
+export async function syncNow(force = false): Promise<void> {
   // Coalesce concurrent callers; queue one follow-up so edits made mid-flight still go.
   if (inFlight) {
     queued = true
     return inFlight
   }
-  inFlight = doSync().finally(() => {
+  inFlight = doSync(force).finally(() => {
     inFlight = null
     if (queued) {
       queued = false
@@ -35,7 +56,7 @@ export async function syncNow(): Promise<void> {
   return inFlight
 }
 
-async function doSync(): Promise<void> {
+async function doSync(force: boolean): Promise<void> {
   const s = useStore.getState()
   const token = s.auth.token
   if (!token) return
@@ -45,14 +66,19 @@ async function doSync(): Promise<void> {
     return
   }
 
-  s.setSyncStatus('syncing')
-  const pushMark = Date.now()
-  const since = s.lastSyncedAt
   const cutoff = s.lastPushMark - PUSH_OVERLAP_MS
-
   const jobs = s.jobs.filter((j) => j.updatedAt > cutoff)
   const shifts = s.shifts.filter((sh) => sh.updatedAt > cutoff)
   const settings = s.settings.updatedAt > cutoff ? s.settings : null
+
+  // Nothing of ours to send, and we looked recently — skip the round trip entirely.
+  const hasLocalChanges = jobs.length > 0 || shifts.length > 0 || settings !== null
+  if (!force && !hasLocalChanges && Date.now() - lastAttemptAt < IDLE_POLL_GAP_MS) return
+
+  lastAttemptAt = Date.now()
+  s.setSyncStatus('syncing')
+  const pushMark = Date.now()
+  const since = s.lastSyncedAt
 
   try {
     const res = await api.sync(token, { since, jobs, shifts, settings })
@@ -91,9 +117,9 @@ let stopAuto: (() => void) | null = null
 /**
  * Sync on a timer, on reconnect, and shortly after any local edit.
  *
- * The debounce matters: a running timer writes to the store on pause/resume, and each
- * keystroke in an edit form updates a draft — syncing on every one of those would be a
- * request storm on a phone connection.
+ * The debounce matters: a running timer writes to the store on pause/resume, and every
+ * keystroke in an edit form updates a draft — syncing on each one would be a request
+ * storm on a phone connection, for no benefit.
  */
 export function startAutoSync(): () => void {
   if (stopAuto) return stopAuto
@@ -102,7 +128,7 @@ export function startAutoSync(): () => void {
 
   const scheduleSoon = () => {
     window.clearTimeout(debounce)
-    debounce = window.setTimeout(() => void syncNow(), 2500)
+    debounce = window.setTimeout(() => void syncNow(), DEBOUNCE_MS)
   }
 
   const unsub = useStore.subscribe((state, prev) => {
@@ -111,16 +137,18 @@ export function startAutoSync(): () => void {
     }
   })
 
-  const interval = window.setInterval(() => void syncNow(), 5 * 60_000)
+  const interval = window.setInterval(() => void syncNow(), POLL_INTERVAL_MS)
   const onOnline = () => void syncNow()
   const onVisible = () => {
+    // Throttled inside doSync — coming back to the app does not justify a request
+    // unless something actually changed or enough time has passed.
     if (document.visibilityState === 'visible') void syncNow()
   }
 
   window.addEventListener('online', onOnline)
   document.addEventListener('visibilitychange', onVisible)
 
-  void syncNow()
+  void syncNow(true)
 
   stopAuto = () => {
     unsub()
@@ -139,7 +167,7 @@ export async function signIn(username: string, passcode: string, mode: 'login' |
   // A new device must pull the entire history, not just what changed since it booted.
   useStore.getState().setLastSyncedAt(0)
   useStore.getState().setLastPushMark(0)
-  await syncNow()
+  await syncNow(true)
 }
 
 export function signOut() {

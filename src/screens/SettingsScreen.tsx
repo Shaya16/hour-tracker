@@ -184,7 +184,7 @@ export function SettingsScreen({ onEditJob }: { onEditJob: (id: string) => void 
           <>
             <Divider />
             <div className="flex gap-2 py-3">
-              <Button variant="soft" className="flex-1" onClick={() => void syncNow()}>
+              <Button variant="soft" className="flex-1" onClick={() => void syncNow(true)}>
                 <CloudIcon size={18} /> Sync now
               </Button>
               <Button variant="ghost" onClick={signOut}>

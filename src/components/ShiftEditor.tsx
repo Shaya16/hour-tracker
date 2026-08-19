@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ConfirmSheet, Sheet } from './ui/Sheet'
 import { TrashIcon } from './ui/icons'
 import { Button, Field, Input, Select, Tag } from './ui/primitives'
@@ -55,15 +55,27 @@ export function ShiftEditor({
   const [draft, setDraft] = useState<Draft | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  // Rebuild the draft whenever the sheet opens on a different shift.
+  /**
+   * Seed the form once per shift. Same trap as the job sheet: depending on the store's
+   * arrays here meant a background sync wiped the form mid-edit.
+   */
+  const seededFor = useRef<string | null>(null)
+
   useEffect(() => {
     if (!shiftId) {
       setDraft(null)
+      seededFor.current = null
       return
     }
+    if (seededFor.current === shiftId) return
+    seededFor.current = shiftId
+
+    const state = useStore.getState()
+    const existing = state.shifts.find((s) => s.id === shiftId)
+
     if (isNew) {
       const base = defaultDate ?? Date.now()
-      const job = live[0]
+      const job = activeJobs(state.jobs)[0]
       setDraft({
         jobId: job?.id ?? '',
         date: toDateInput(base),
@@ -85,7 +97,7 @@ export function ShiftEditor({
       extra: existing.extraAgorot ? String(existing.extraAgorot / 100) : '',
       note: existing.note,
     })
-  }, [shiftId, isNew, existing, defaultDate, live])
+  }, [shiftId, isNew, defaultDate])
 
   const computed = useMemo(() => {
     if (!draft || !draft.date || !draft.startTime) return null
