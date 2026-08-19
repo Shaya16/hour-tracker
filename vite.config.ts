@@ -44,7 +44,9 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 5173,
+    // Honour PORT so a second dev server (a preview harness, a parallel checkout) can be
+    // told where to listen instead of silently drifting to 5174 and being unreachable.
+    port: Number(process.env.PORT) || 5173,
   },
   test: {
     environment: 'node',
