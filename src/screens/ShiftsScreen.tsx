@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, PlusIcon } from '../components/ui/icons'
 import { AnimatedNumber } from '../components/ui/AnimatedNumber'
 import { Toast, useToast } from '../components/ui/Toast'
 import { Button, Card, EmptyState, Segmented, cx } from '../components/ui/primitives'
-import { Header, Screen } from './TimerScreen'
+import { Screen } from './TimerScreen'
 import { dayKey, dayRange, weekDays, weekRange } from '../lib/dates'
 import { hm, money } from '../lib/format'
 import { useNow } from '../lib/hooks'
@@ -114,101 +114,107 @@ export function ShiftsScreen({
 
   return (
     <Screen>
-      <Header
-        title="Shifts"
-        action={
-          <Button size="sm" onClick={() => onAddShift(cursor)}>
-            <PlusIcon size={16} /> Add
-          </Button>
-        }
-      />
-
-      {/* Week navigator */}
-      <div className="flex items-center justify-between mb-3">
-        <button
-          type="button"
-          aria-label="Previous week"
-          onClick={() => setCursor((c) => addDays(new Date(c), -7).getTime())}
-          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div className="t-label tabular text-ink">
-          {format(week.start, 'MMM d')} – {format(week.end, 'MMM d, yyyy')}
+      {/* Header carries the view toggle, so it does not need a full-width row of its
+          own. Three stacked control blocks before any content was the density problem. */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h1 className="t-h1 text-ink">Shifts</h1>
+        <div className="flex items-center gap-2">
+          <Segmented
+            className="w-[168px]"
+            options={[
+              { value: 'day', label: 'Day' },
+              { value: 'list', label: 'Week' },
+            ]}
+            value={view}
+            onChange={setView}
+          />
+          <button
+            type="button"
+            aria-label="Add shift"
+            onClick={() => onAddShift(cursor)}
+            className="grid place-items-center size-9 shrink-0 rounded-full bg-brand text-[var(--color-brand-ink)] shadow-[var(--shadow-brand)] press"
+          >
+            <PlusIcon size={18} />
+          </button>
         </div>
-        <button
-          type="button"
-          aria-label="Next week"
-          onClick={() => setCursor((c) => addDays(new Date(c), 7).getTime())}
-          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press"
-        >
-          <ChevronRight size={18} />
-        </button>
       </div>
 
-      <Segmented
-        className="mb-3"
-        options={[
-          { value: 'day', label: 'By day' },
-          { value: 'list', label: 'Whole week' },
-        ]}
-        value={view}
-        onChange={setView}
-      />
+      {/* Week navigation and the day strip are one job, so they are one block: the
+          month caption tells you where you are, the numbers tell you the dates. */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            aria-label="Previous week"
+            onClick={() => setCursor((c) => addDays(new Date(c), -7).getTime())}
+            className="grid place-items-center size-8 shrink-0 rounded-full text-muted press"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="t-micro text-muted uppercase tabular">
+            {format(week.start, 'MMMM yyyy')}
+          </span>
+          <button
+            type="button"
+            aria-label="Next week"
+            onClick={() => setCursor((c) => addDays(new Date(c), 7).getTime())}
+            className="grid place-items-center size-8 shrink-0 rounded-full text-muted press"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
 
-      {/* Day strip — the S M T W T F S row from the mockup. Only meaningful when a
-          single day is being shown; the list already covers every day at once. */}
-      {view === 'day' ? (
-      <div className="flex gap-1.5">
-        {days.map((d) => {
-          const key = format(d, 'yyyy-MM-dd')
-          const isSelected = sameDay(d, new Date(cursor))
-          const isToday = sameDay(d, new Date(today))
-          const secs = perDay.get(key) ?? 0
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setCursor(startOfDay(d).getTime() + 12 * 3600_000)}
-              className={cx(
-                'flex-1 flex flex-col items-center gap-1 py-2.5 rounded-[15px] press',
-                isSelected ? 'bg-brand shadow-[var(--shadow-brand)]' : 'bg-surface edge',
-              )}
-            >
-              <span
-                className={cx(
-                  't-micro',
-                  isSelected ? 'text-white/70' : 'text-muted',
-                )}
-              >
-                {format(d, 'EEEEE')}
-              </span>
-              <span
-                className={cx(
-                  'text-[14.5px] font-bold tabular tracking-[-0.02em]',
-                  isSelected ? 'text-white' : isToday ? 'text-brand' : 'text-ink',
-                )}
-              >
-                {format(d, 'd')}
-              </span>
-              <span
-                className={cx(
-                  'size-1.5 rounded-full transition-colors',
-                  secs > 0
-                    ? isSelected
-                      ? 'bg-white'
-                      : 'bg-brand'
-                    : 'bg-transparent',
-                )}
-              />
-            </button>
-          )
-        })}
+        {view === 'day' ? (
+          <div className="flex mt-1">
+            {days.map((d) => {
+              const key = format(d, 'yyyy-MM-dd')
+              const isSelected = sameDay(d, new Date(cursor))
+              const isToday = sameDay(d, new Date(today))
+              const secs = perDay.get(key) ?? 0
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCursor(startOfDay(d).getTime() + 12 * 3600_000)}
+                  className="flex-1 flex flex-col items-center gap-1 py-1.5 press"
+                >
+                  <span
+                    className={cx(
+                      't-micro',
+                      isSelected ? 'text-brand' : 'text-faint',
+                    )}
+                  >
+                    {format(d, 'EEEEE')}
+                  </span>
+                  {/* Only the selected day is a filled shape. Seven bordered cards made
+                      pure navigation the heaviest thing on the screen. */}
+                  <span
+                    className={cx(
+                      'grid place-items-center size-9 rounded-full text-[15px] font-bold tabular tracking-[-0.02em]',
+                      isSelected
+                        ? 'bg-brand text-[var(--color-brand-ink)] shadow-[var(--shadow-brand)]'
+                        : isToday
+                          ? 'text-brand'
+                          : 'text-ink',
+                    )}
+                  >
+                    {format(d, 'd')}
+                  </span>
+                  <span
+                    className={cx(
+                      'size-1 rounded-full',
+                      secs > 0 ? (isSelected ? 'bg-brand' : 'bg-faint') : 'bg-transparent',
+                    )}
+                  />
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
-      ) : null}
 
       {/* Week summary */}
-      <Card className="mt-3.5 p-4">
+      <Card className="p-4">
         <div className="flex items-end justify-between">
           <div>
             <div className="t-micro text-muted uppercase">This week</div>
