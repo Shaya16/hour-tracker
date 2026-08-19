@@ -16,7 +16,7 @@ export interface Env {
   DB: D1Database
   /** Static asset server, bound automatically in _worker.js advanced mode. */
   ASSETS: { fetch: (request: Request) => Promise<Response> }
-  /** HMAC key for session tokens. Set in the dashboard under Variables and Secrets. */
+  /** HMAC key for session tokens. Dashboard: Settings > Variables and secrets. */
   AUTH_SECRET?: string
 }
 
@@ -86,8 +86,11 @@ function validRecords(input: unknown): SyncRecord[] {
 async function handleAuth(request: Request, env: Env, mode: 'signup' | 'login'): Promise<Response> {
   const secret = authSecret(env)
   if (!secret) {
+    // Names the fix in the dashboard, not just the CLI — the CLI needs Node 22+ and
+    // is not an option for everyone hitting this.
     return fail(
-      'Server is missing AUTH_SECRET. Run: wrangler pages secret put AUTH_SECRET',
+      'Server is missing AUTH_SECRET. Add it in the Cloudflare dashboard under ' +
+        'Settings > Variables and secrets (type: Secret), then redeploy.',
       500,
     )
   }
