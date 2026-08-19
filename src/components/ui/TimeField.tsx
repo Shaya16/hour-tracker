@@ -7,6 +7,14 @@ import { haptic } from '../../lib/hooks'
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
+const ITEM_H = 44
+/**
+ * Must be **odd**. The wheel centres the selected row at height/2, so an even row count
+ * puts that midpoint on a boundary between two rows — the selection never lines up with
+ * an item, and the highlight band sits half a row out. Four rows was exactly that bug.
+ */
+const ROWS = 5
+
 /** Round the current clock to the nearest 5 minutes, for a sensible starting position. */
 function nowRounded(): { hour: string; minute: string } {
   const d = new Date()
@@ -41,12 +49,13 @@ export function TimeField({
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(() => splitOrNow(value))
-
-  // Re-seed each time the sheet opens, so it reflects any external change
-  // (a duration chip moving the end time, say) rather than a stale pick.
   useEffect(() => {
-    if (open) setDraft(splitOrNow(value))
-  }, [open, value])
+    if (!open) return
+    // Re-seed on open only — not on every `value` change — so a pick in progress is
+    // never yanked out from under the user by a parent update.
+    setDraft(splitOrNow(value))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   return (
     <>
@@ -103,7 +112,8 @@ export function TimeField({
         <div className="relative py-2">
           {/* The selection band sits behind the wheels so the centred row reads as chosen. */}
           <div
-            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-11 rounded-[var(--radius-inner)] bg-brand-soft pointer-events-none"
+            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 rounded-[var(--radius-inner)] bg-brand-soft pointer-events-none"
+            style={{ height: ITEM_H }}
             aria-hidden
           />
           <Picker
@@ -112,8 +122,8 @@ export function TimeField({
               haptic(4)
               setDraft(v as { hour: string; minute: string })
             }}
-            height={176}
-            itemHeight={44}
+            height={ROWS * ITEM_H}
+            itemHeight={ITEM_H}
             wheelMode="normal"
           >
             <Picker.Column name="hour">
