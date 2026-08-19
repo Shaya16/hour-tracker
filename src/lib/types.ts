@@ -119,6 +119,33 @@ export interface Shift {
   deleted: boolean
 }
 
+/**
+ * A claim for payment covering everything worked at one job up to a point in time.
+ *
+ * The hours and amount are **snapshots** taken when the invoice was raised, not live
+ * figures. Once you have asked an employer for a specific sum, that is the sum you
+ * asked for — editing a shift from that period months later must not silently rewrite
+ * what you claimed, or the record stops being usable as a record.
+ */
+export interface Invoice {
+  id: string
+  jobId: string
+  /** Every shift at this job *starting* at or before this instant is covered. */
+  periodEnd: number
+  /** Snapshot: seconds worked in the covered period. */
+  hoursSecs: number
+  /** Snapshot: amount claimed, in agorot. */
+  amountAgorot: number
+  status: InvoiceStatus
+  requestedAt: number
+  paidAt: number | null
+  note: string
+  updatedAt: number
+  deleted: boolean
+}
+
+export type InvoiceStatus = 'requested' | 'paid'
+
 export type PayPeriodKind = 'weekly' | 'biweekly' | 'monthly'
 
 export interface Settings {
@@ -159,5 +186,6 @@ export const DEFAULT_OVERTIME = {
 export interface SyncPayload {
   jobs: Job[]
   shifts: Shift[]
+  invoices: Invoice[]
   settings: Settings | null
 }

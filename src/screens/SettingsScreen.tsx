@@ -18,7 +18,7 @@ import { computeBreakdowns } from '../lib/pay'
 import { signOut, syncNow } from '../lib/sync'
 import { allLiveJobs, jobsById, liveShifts, useStore } from '../lib/store'
 import { useJobColors } from '../lib/hooks'
-import { DEFAULT_SETTINGS, type Job, type PayPeriodKind, type Settings, type Shift } from '../lib/types'
+import { DEFAULT_SETTINGS, type Invoice, type Job, type PayPeriodKind, type Settings, type Shift } from '../lib/types'
 
 const CURRENCIES = [
   { symbol: '₪', code: 'ILS', label: '₪ Shekel (ILS)' },
@@ -30,6 +30,7 @@ const CURRENCIES = [
 export function SettingsScreen({ onEditJob }: { onEditJob: (id: string) => void }) {
   const jobs = useStore((s) => s.jobs)
   const shifts = useStore((s) => s.shifts)
+  const invoices = useStore((s) => s.invoices)
   const settings = useStore((s) => s.settings)
   const auth = useStore((s) => s.auth)
   const syncStatus = useStore((s) => s.syncStatus)
@@ -51,10 +52,11 @@ export function SettingsScreen({ onEditJob }: { onEditJob: (id: string) => void 
 
   function exportJson() {
     const payload = {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       jobs: jobs.filter((j) => !j.deleted),
       shifts: shifts.filter((s) => !s.deleted),
+      invoices: invoices.filter((i) => !i.deleted),
       settings,
     }
     downloadFile(
@@ -76,6 +78,7 @@ export function SettingsScreen({ onEditJob }: { onEditJob: (id: string) => void 
       const data = JSON.parse(text) as {
         jobs?: Job[]
         shifts?: Shift[]
+        invoices?: Invoice[]
         settings?: Settings
       }
       if (!Array.isArray(data.jobs) || !Array.isArray(data.shifts)) {
@@ -85,6 +88,8 @@ export function SettingsScreen({ onEditJob }: { onEditJob: (id: string) => void 
       replaceAll({
         jobs: data.jobs,
         shifts: data.shifts,
+        // Backups written before invoicing existed simply have none.
+        invoices: data.invoices ?? [],
         settings: data.settings ? { ...DEFAULT_SETTINGS, ...data.settings } : undefined,
       })
       setImportMsg(`Restored ${data.jobs.length} jobs and ${data.shifts.length} shifts.`)

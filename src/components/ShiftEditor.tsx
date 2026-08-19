@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ConfirmSheet, Sheet } from './ui/Sheet'
 import { TrashIcon } from './ui/icons'
-import { Button, Field, Input, Select, Tag } from './ui/primitives'
+import { Button, Field, Input, Select, Tag, cx } from './ui/primitives'
 import { fromDateTimeInput, toDateInput, toTimeInput } from '../lib/dates'
 import { humanDuration, money, parseMoney, parseNum } from '../lib/format'
 import { computeBreakdowns } from '../lib/pay'
@@ -9,6 +9,9 @@ import { activeJobs, jobsById, liveShifts, useStore } from '../lib/store'
 import { useJobColors } from '../lib/hooks'
 
 const DAY_MS = 86_400_000
+
+/** The shift lengths worth one tap. Anything unusual is still typed by hand. */
+const DURATION_PRESETS = [240, 300, 360, 420, 480, 540, 600]
 
 interface Draft {
   jobId: string
@@ -138,6 +141,20 @@ export function ShiftEditor({
   )
   const canSave = Boolean(draft?.jobId && computed)
 
+  /** Whole minutes between start and end, or null while the shift is open-ended. */
+  const durationMins =
+    computed?.endedAt != null ? Math.round((computed.endedAt - computed.startedAt) / 60_000) : null
+
+  /** Move the end time to `mins` after the start, wrapping past midnight if needed. */
+  function setDuration(mins: number) {
+    if (!draft?.startTime) return
+    const [h, m] = draft.startTime.split(':').map(Number)
+    const total = ((h ?? 0) * 60 + (m ?? 0) + mins) % (24 * 60)
+    const hh = String(Math.floor(total / 60)).padStart(2, '0')
+    const mm = String(total % 60).padStart(2, '0')
+    set('endTime', `${hh}:${mm}`)
+  }
+
   function save() {
     if (!draft || !computed || !draft.jobId) return
     const patch = {
@@ -218,6 +235,27 @@ export function ShiftEditor({
               />
             </Field>
           </div>
+
+          <Field label="Shift length" hint="Sets the end time from the start">
+            <div className="flex flex-wrap gap-1.5">
+              {DURATION_PRESETS.map((mins) => {
+                const active = computed?.endedAt != null && durationMins === mins
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setDuration(mins)}
+                    className={cx(
+                      'h-9 px-3.5 rounded-full text-[13.5px] font-semibold press',
+                      active ? 'bg-brand text-[var(--color-brand-ink)]' : 'bg-sunken text-muted',
+                    )}
+                  >
+                    {mins % 60 === 0 ? `${mins / 60}h` : `${Math.floor(mins / 60)}h${mins % 60}`}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Unpaid break (min)">

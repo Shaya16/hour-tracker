@@ -170,6 +170,7 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
     since?: unknown
     jobs?: unknown
     shifts?: unknown
+    invoices?: unknown
     settings?: unknown
   }>(request)
   if (!body) return fail('Invalid request body', 400)
@@ -177,6 +178,7 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
   const since = typeof body.since === 'number' && Number.isFinite(body.since) ? body.since : 0
   const jobs = validRecords(body.jobs)
   const shifts = validRecords(body.shifts)
+  const invoices = validRecords(body.invoices)
   const db = env.DB
   const nowTs = Date.now()
 
@@ -185,7 +187,7 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
   // written only if nothing newer is already stored.
   const statements: D1PreparedStatement[] = []
 
-  const upsert = (table: 'jobs' | 'shifts', rec: SyncRecord) =>
+  const upsert = (table: 'jobs' | 'shifts' | 'invoices', rec: SyncRecord) =>
     db
       .prepare(
         `INSERT INTO ${table} (id, user_id, data, updated_at, server_seq)
@@ -200,6 +202,7 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
 
   for (const j of jobs) statements.push(upsert('jobs', j))
   for (const s of shifts) statements.push(upsert('shifts', s))
+  for (const i of invoices) statements.push(upsert('invoices', i))
 
   const settings = body.settings
   if (settings && typeof settings === 'object') {
@@ -228,13 +231,17 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
   // which is a handful of rows, in exchange for never dropping a write that landed in
   // the same millisecond as the previous response. Re-delivery is harmless because the
   // client merges by last-write-wins.
-  const [jobRows, shiftRows, settingsRow] = await Promise.all([
+  const [jobRows, shiftRows, invoiceRows, settingsRow] = await Promise.all([
     db
       .prepare('SELECT data FROM jobs WHERE user_id = ? AND server_seq >= ?')
       .bind(userId, since)
       .all<{ data: string }>(),
     db
       .prepare('SELECT data FROM shifts WHERE user_id = ? AND server_seq >= ?')
+      .bind(userId, since)
+      .all<{ data: string }>(),
+    db
+      .prepare('SELECT data FROM invoices WHERE user_id = ? AND server_seq >= ?')
       .bind(userId, since)
       .all<{ data: string }>(),
     db
@@ -268,6 +275,7 @@ async function handleSync(request: Request, env: Env): Promise<Response> {
     now: nowTs,
     jobs: parse(jobRows.results ?? []),
     shifts: parse(shiftRows.results ?? []),
+    invoices: parse(invoiceRows.results ?? []),
     settings: parsedSettings,
   })
 }

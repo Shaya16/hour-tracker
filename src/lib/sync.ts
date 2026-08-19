@@ -69,10 +69,12 @@ async function doSync(force: boolean): Promise<void> {
   const cutoff = s.lastPushMark - PUSH_OVERLAP_MS
   const jobs = s.jobs.filter((j) => j.updatedAt > cutoff)
   const shifts = s.shifts.filter((sh) => sh.updatedAt > cutoff)
+  const invoices = s.invoices.filter((i) => i.updatedAt > cutoff)
   const settings = s.settings.updatedAt > cutoff ? s.settings : null
 
   // Nothing of ours to send, and we looked recently — skip the round trip entirely.
-  const hasLocalChanges = jobs.length > 0 || shifts.length > 0 || settings !== null
+  const hasLocalChanges =
+    jobs.length > 0 || shifts.length > 0 || invoices.length > 0 || settings !== null
   if (!force && !hasLocalChanges && Date.now() - lastAttemptAt < IDLE_POLL_GAP_MS) return
 
   lastAttemptAt = Date.now()
@@ -81,11 +83,12 @@ async function doSync(force: boolean): Promise<void> {
   const since = s.lastSyncedAt
 
   try {
-    const res = await api.sync(token, { since, jobs, shifts, settings })
+    const res = await api.sync(token, { since, jobs, shifts, invoices, settings })
     // Merge before advancing the cursors, so a failed merge cannot skip data.
     useStore.getState().mergeRemote({
       jobs: res.jobs,
       shifts: res.shifts,
+      invoices: res.invoices ?? [],
       settings: res.settings,
     })
     useStore.getState().setLastSyncedAt(res.now)
@@ -132,7 +135,12 @@ export function startAutoSync(): () => void {
   }
 
   const unsub = useStore.subscribe((state, prev) => {
-    if (state.jobs !== prev.jobs || state.shifts !== prev.shifts || state.settings !== prev.settings) {
+    if (
+      state.jobs !== prev.jobs ||
+      state.shifts !== prev.shifts ||
+      state.invoices !== prev.invoices ||
+      state.settings !== prev.settings
+    ) {
       scheduleSoon()
     }
   })

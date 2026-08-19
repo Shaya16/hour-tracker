@@ -82,7 +82,7 @@ describe('mergeRemote preserves identity when nothing changed', () => {
     useStore.setState({ jobs: [j] })
     const before = useStore.getState().jobs
 
-    useStore.getState().mergeRemote({ jobs: [{ ...j }], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [{ ...j }], shifts: [], invoices: [], settings: null })
 
     expect(useStore.getState().jobs).toBe(before)
   })
@@ -92,7 +92,7 @@ describe('mergeRemote preserves identity when nothing changed', () => {
     const jobsBefore = useStore.getState().jobs
     const shiftsBefore = useStore.getState().shifts
 
-    useStore.getState().mergeRemote({ jobs: [], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [], shifts: [], invoices: [], settings: null })
 
     expect(useStore.getState().jobs).toBe(jobsBefore)
     expect(useStore.getState().shifts).toBe(shiftsBefore)
@@ -102,7 +102,7 @@ describe('mergeRemote preserves identity when nothing changed', () => {
     useStore.setState({ jobs: [job('j1', 200)] })
     const before = useStore.getState().jobs
 
-    useStore.getState().mergeRemote({ jobs: [job('j1', 100)], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [job('j1', 100)], shifts: [], invoices: [], settings: null })
 
     expect(useStore.getState().jobs).toBe(before)
     expect(useStore.getState().jobs[0]!.updatedAt).toBe(200)
@@ -112,7 +112,7 @@ describe('mergeRemote preserves identity when nothing changed', () => {
     useStore.setState({ settings: settingsAt(200) })
     const before = useStore.getState().settings
 
-    useStore.getState().mergeRemote({ jobs: [], shifts: [], settings: settingsAt(200) })
+    useStore.getState().mergeRemote({ jobs: [], shifts: [], invoices: [], settings: settingsAt(200) })
 
     expect(useStore.getState().settings).toBe(before)
   })
@@ -124,8 +124,8 @@ describe('mergeRemote preserves identity when nothing changed', () => {
       if (state.jobs !== prev.jobs) notifiedWithNewJobs += 1
     })
 
-    useStore.getState().mergeRemote({ jobs: [job('j1', 100)], shifts: [], settings: null })
-    useStore.getState().mergeRemote({ jobs: [], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [job('j1', 100)], shifts: [], invoices: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [], shifts: [], invoices: [], settings: null })
 
     unsub()
     expect(notifiedWithNewJobs).toBe(0)
@@ -140,6 +140,7 @@ describe('mergeRemote still applies real changes', () => {
     useStore.getState().mergeRemote({
       jobs: [job('j1', 200, { name: 'New' })],
       shifts: [],
+      invoices: [],
       settings: null,
     })
 
@@ -150,7 +151,7 @@ describe('mergeRemote still applies real changes', () => {
   it('adds a record the client has never seen', () => {
     useStore.setState({ jobs: [job('j1', 100)] })
 
-    useStore.getState().mergeRemote({ jobs: [job('j2', 100)], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [job('j2', 100)], shifts: [], invoices: [], settings: null })
 
     expect(useStore.getState().jobs.map((j) => j.id).sort()).toEqual(['j1', 'j2'])
   })
@@ -161,6 +162,7 @@ describe('mergeRemote still applies real changes', () => {
     useStore.getState().mergeRemote({
       jobs: [],
       shifts: [shift('s1', 200, { deleted: true })],
+      invoices: [],
       settings: null,
     })
 
@@ -173,6 +175,7 @@ describe('mergeRemote still applies real changes', () => {
     useStore.getState().mergeRemote({
       jobs: [],
       shifts: [],
+      invoices: [],
       settings: { ...settingsAt(200), weeklyGoalHours: 25 },
     })
 
@@ -183,7 +186,7 @@ describe('mergeRemote still applies real changes', () => {
     const keep = job('j1', 100)
     useStore.setState({ jobs: [keep, job('j2', 100)] })
 
-    useStore.getState().mergeRemote({ jobs: [job('j2', 300)], shifts: [], settings: null })
+    useStore.getState().mergeRemote({ jobs: [job('j2', 300)], shifts: [], invoices: [], settings: null })
 
     // The array is new, but the record nobody edited is still the same object —
     // which is what lets memoised consumers skip work.

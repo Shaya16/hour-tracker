@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { format, isSameDay } from 'date-fns'
 import { PlusIcon } from './ui/icons'
 import { cx } from './ui/primitives'
 import { hm } from '../lib/format'
@@ -98,12 +99,6 @@ export function QuickLog({
 }
 
 function formatDayLabel(day: number): string {
-  const d = new Date(day)
-  const today = new Date()
-  const isToday =
-    d.getFullYear() === today.getFullYear() &&
-    d.getMonth() === today.getMonth() &&
-    d.getDate() === today.getDate()
-  if (isToday) return 'today'
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })
+  if (isSameDay(day, Date.now())) return 'today'
+  return format(day, 'EEEE d MMM')
 }

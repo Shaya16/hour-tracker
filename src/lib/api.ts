@@ -1,4 +1,4 @@
-import type { Job, Settings, Shift } from './types'
+import type { Invoice, Job, Settings, Shift } from './types'
 
 export interface AuthResponse {
   token: string
@@ -9,6 +9,7 @@ export interface SyncResponse {
   now: number
   jobs: Job[]
   shifts: Shift[]
+  invoices: Invoice[]
   settings: Settings | null
 }
 
@@ -61,6 +62,12 @@ export const api = {
 
   sync: (
     token: string,
-    payload: { since: number; jobs: Job[]; shifts: Shift[]; settings: Settings | null },
+    payload: {
+      since: number
+      jobs: Job[]
+      shifts: Shift[]
+      invoices: Invoice[]
+      settings: Settings | null
+    },
   ) => request<SyncResponse>('/api/sync', payload, token),
 }

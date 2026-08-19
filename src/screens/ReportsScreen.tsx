@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
+import { InvoicePanel } from '../components/InvoicePanel'
 import { JobDonut, JobLegend, type DonutSlice } from '../components/charts/JobDonut'
 import { StackedWeekBars, type DayBar } from '../components/charts/StackedWeekBars'
 import { ChevronLeft, ChevronRight, DownloadIcon } from '../components/ui/icons'
@@ -247,6 +248,10 @@ export function ReportsScreen() {
       <Button variant="surface" size="lg" className="w-full mt-6" onClick={exportCsv}>
         <DownloadIcon size={18} /> Export this period as CSV
       </Button>
+
+      {/* Invoicing spans all time, not the selected period, so it sits below the
+          period-scoped sections rather than inside them. */}
+      <InvoicePanel />
 
       <p className="t-small text-muted text-center mt-3 px-6 leading-relaxed">
         Figures are an estimate based on the rates you entered. Always check them against your

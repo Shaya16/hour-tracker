@@ -4,6 +4,7 @@ import {
   DEFAULT_OVERTIME,
   DEFAULT_SETTINGS,
   JOB_COLOR_ORDER,
+  type Invoice,
   type Job,
   type JobColorKey,
   type Settings,
@@ -27,6 +28,7 @@ export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'error' | 'offline'
 interface State {
   jobs: Job[]
   shifts: Shift[]
+  invoices: Invoice[]
   settings: Settings
   auth: AuthState
   /** Server-issued cursor: everything changed on the server after this has been pulled. */
@@ -52,6 +54,11 @@ interface State {
   updateShift: (id: string, patch: Partial<Shift>) => void
   removeShift: (id: string) => void
 
+  // Invoices
+  addInvoice: (partial: Partial<Invoice> & { jobId: string; periodEnd: number }) => Invoice
+  updateInvoice: (id: string, patch: Partial<Invoice>) => void
+  removeInvoice: (id: string) => void
+
   // Timer
   startShift: (jobId: string, at?: number) => Shift | null
   pauseShift: (id: string, at?: number) => void
@@ -67,9 +74,19 @@ interface State {
   setOnboarded: (v: boolean) => void
 
   /** Replace local data with a merged set from the sync layer. */
-  mergeRemote: (data: { jobs: Job[]; shifts: Shift[]; settings: Settings | null }) => void
+  mergeRemote: (data: {
+    jobs: Job[]
+    shifts: Shift[]
+    invoices: Invoice[]
+    settings: Settings | null
+  }) => void
   /** Wholesale replace, for JSON restore. */
-  replaceAll: (data: { jobs: Job[]; shifts: Shift[]; settings?: Settings }) => void
+  replaceAll: (data: {
+    jobs: Job[]
+    shifts: Shift[]
+    invoices?: Invoice[]
+    settings?: Settings
+  }) => void
   reset: () => void
 }
 
@@ -111,6 +128,7 @@ export const useStore = create<State>()(
     (set, get) => ({
       jobs: [],
       shifts: [],
+      invoices: [],
       settings: { ...DEFAULT_SETTINGS },
       auth: { token: null, username: null },
       lastSyncedAt: 0,
@@ -150,6 +168,9 @@ export const useStore = create<State>()(
           shifts: s.shifts.map((sh) =>
             sh.jobId === id ? { ...sh, deleted: true, updatedAt: now() } : sh,
           ),
+          invoices: s.invoices.map((i) =>
+            i.jobId === id ? { ...i, deleted: true, updatedAt: now() } : i,
+          ),
         })),
 
       addShift: (partial) => {
@@ -179,6 +200,36 @@ export const useStore = create<State>()(
         set((s) => ({
           shifts: s.shifts.map((sh) =>
             sh.id === id ? { ...sh, deleted: true, updatedAt: now() } : sh,
+          ),
+        })),
+
+      addInvoice: (partial) => {
+        const ts = now()
+        const inv: Invoice = {
+          id: uid(),
+          hoursSecs: 0,
+          amountAgorot: 0,
+          status: 'requested',
+          requestedAt: ts,
+          paidAt: null,
+          note: '',
+          updatedAt: ts,
+          deleted: false,
+          ...partial,
+        }
+        set((s) => ({ invoices: [...s.invoices, inv] }))
+        return inv
+      },
+
+      updateInvoice: (id, patch) =>
+        set((s) => ({
+          invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch, updatedAt: now() } : i)),
+        })),
+
+      removeInvoice: (id) =>
+        set((s) => ({
+          invoices: s.invoices.map((i) =>
+            i.id === id ? { ...i, deleted: true, updatedAt: now() } : i,
           ),
         })),
 
@@ -228,22 +279,34 @@ export const useStore = create<State>()(
       setOnboarded: (onboarded) => set({ onboarded }),
 
       // Bail out entirely when a sync brought nothing new, so subscribers stay quiet.
-      mergeRemote: ({ jobs, shifts, settings }) =>
+      mergeRemote: ({ jobs, shifts, invoices, settings }) =>
         set((s) => {
           const nextJobs = mergeById(s.jobs, jobs)
           const nextShifts = mergeById(s.shifts, shifts)
+          const nextInvoices = mergeById(s.invoices, invoices)
           const nextSettings =
             settings && settings.updatedAt > s.settings.updatedAt ? settings : s.settings
-          if (nextJobs === s.jobs && nextShifts === s.shifts && nextSettings === s.settings) {
+          if (
+            nextJobs === s.jobs &&
+            nextShifts === s.shifts &&
+            nextInvoices === s.invoices &&
+            nextSettings === s.settings
+          ) {
             return s
           }
-          return { jobs: nextJobs, shifts: nextShifts, settings: nextSettings }
+          return {
+            jobs: nextJobs,
+            shifts: nextShifts,
+            invoices: nextInvoices,
+            settings: nextSettings,
+          }
         }),
 
-      replaceAll: ({ jobs, shifts, settings }) =>
+      replaceAll: ({ jobs, shifts, invoices, settings }) =>
         set((s) => ({
           jobs,
           shifts,
+          invoices: invoices ?? [],
           settings: settings ?? s.settings,
         })),
 
@@ -251,6 +314,7 @@ export const useStore = create<State>()(
         set({
           jobs: [],
           shifts: [],
+          invoices: [],
           settings: { ...DEFAULT_SETTINGS },
           auth: { token: null, username: null },
           lastSyncedAt: 0,
@@ -266,6 +330,7 @@ export const useStore = create<State>()(
       partialize: (s) => ({
         jobs: s.jobs,
         shifts: s.shifts,
+        invoices: s.invoices,
         settings: s.settings,
         auth: s.auth,
         lastSyncedAt: s.lastSyncedAt,

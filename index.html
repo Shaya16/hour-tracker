@@ -1,5 +1,12 @@
 <!doctype html>
-<html lang="en">
+<!--
+  en-GB rather than en: browsers render <input type="time"> and <input type="date">
+  using the document language, so plain "en" inherits the OS regional format and shows
+  a 12-hour AM/PM picker on a US-configured machine. en-GB pins the pickers to a
+  24-hour clock and day/month/year dates, which is what the rest of the app already
+  formats to. All display text stays English.
+-->
+<html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
