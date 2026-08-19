@@ -2,9 +2,10 @@ name = "hour-tracker"
 compatibility_date = "2026-08-18"
 pages_build_output_dir = "dist"
 
-# Created by: npx wrangler d1 create hour-tracker
-# Paste the printed database_id below, then run: npm run db:migrate
+# The database id is an identifier, not a secret — it is useless without account
+# credentials, and Cloudflare's Git builds read this file to apply the binding, so it
+# has to be committed rather than left as a placeholder.
 [[d1_databases]]
 binding = "DB"
 database_name = "hour-tracker"
-database_id = "PASTE_YOUR_DATABASE_ID_HERE"
+database_id = "0dc5d765-5621-4cc9-9641-73552ec08073"
