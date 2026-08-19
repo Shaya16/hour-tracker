@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ConfirmSheet, Sheet } from './ui/Sheet'
 import { TrashIcon } from './ui/icons'
 import { Button, Field, Input, Select, Tag, cx } from './ui/primitives'
+import { TimeField } from './ui/TimeField'
 import { fromDateTimeInput, toDateInput, toTimeInput } from '../lib/dates'
 import { humanDuration, money, parseMoney, parseNum } from '../lib/format'
 import { computeBreakdowns } from '../lib/pay'
@@ -218,20 +219,20 @@ export function ShiftEditor({
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Start">
-              <Input
-                type="time"
+              <TimeField
+                label="Start"
                 value={draft.startTime}
-                onChange={(e) => set('startTime', e.target.value)}
+                onChange={(v) => set('startTime', v)}
               />
             </Field>
             <Field
               label="End"
               hint={crossesMidnight ? 'Ends next day' : draft.endTime ? undefined : 'Leave empty to keep running'}
             >
-              <Input
-                type="time"
+              <TimeField
+                label="End"
                 value={draft.endTime}
-                onChange={(e) => set('endTime', e.target.value)}
+                onChange={(v) => set('endTime', v)}
               />
             </Field>
           </div>

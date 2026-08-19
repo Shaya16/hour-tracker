@@ -1,10 +1,12 @@
 <!doctype html>
 <!--
-  en-GB rather than en: browsers render <input type="time"> and <input type="date">
-  using the document language, so plain "en" inherits the OS regional format and shows
-  a 12-hour AM/PM picker on a US-configured machine. en-GB pins the pickers to a
-  24-hour clock and day/month/year dates, which is what the rest of the app already
-  formats to. All display text stays English.
+  en-GB rather than en, for day/month date ordering in browsers that honour the
+  document language (Safari, Firefox).
+
+  It does NOT control <input type="time">. Chrome renders that from the *browser's*
+  language setting, which no page attribute can override — verified directly: an input
+  with an explicit lang="en-GB" still showed "02:30 PM" in a US-configured Chrome. That
+  is why time entry uses the custom TimeField component instead of the native control.
 -->
 <html lang="en-GB">
   <head>
