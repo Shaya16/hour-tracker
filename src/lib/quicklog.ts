@@ -18,6 +18,12 @@ const LOOKBACK_DAYS = 90
 /** Times are grouped to the nearest quarter hour — 08:58 and 09:02 are the same shift. */
 const ROUND_MINS = 15
 
+/**
+ * Shorter than this and it is not a shift worth offering as a one-tap suggestion —
+ * usually a timer started and stopped by accident.
+ */
+const MIN_PATTERN_MINS = 30
+
 export interface ShiftPattern {
   id: string
   jobId: string
@@ -66,11 +72,15 @@ export function derivePatterns(
 
     const startMins = roundTo(minutesFromMidnight(s.startedAt), ROUND_MINS)
     let endMins = roundTo(minutesFromMidnight(s.endedAt), ROUND_MINS)
-    // A shift ending on a later calendar day wrapped past midnight.
-    if (dayKey(s.endedAt) !== dayKey(s.startedAt) || endMins <= startMins) {
-      endMins += 24 * 60
-    }
-    if (endMins <= startMins) continue
+
+    // Only a genuinely later calendar day means the shift wrapped past midnight.
+    // Inferring it from "end is not after start" turned a zero-length shift — start
+    // the timer, stop it immediately — into a 24-hour suggestion, which one tap would
+    // then have logged as a full day's pay.
+    if (dayKey(s.endedAt) !== dayKey(s.startedAt)) endMins += 24 * 60
+
+    // Too short to be a shift worth suggesting, or corrupt.
+    if (endMins - startMins < MIN_PATTERN_MINS) continue
 
     const key = `${s.jobId}|${startMins}|${endMins}`
     const existing = buckets.get(key)

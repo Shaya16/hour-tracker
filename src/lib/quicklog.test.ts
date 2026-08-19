@@ -199,3 +199,40 @@ describe('minsToLabel', () => {
     expect(minsToLabel(mins)).toBe(expected)
   })
 })
+
+describe('degenerate shifts never become suggestions', () => {
+  it('ignores a zero-length shift instead of calling it 24 hours', () => {
+    // Start the timer, stop it immediately: same start and end. Treating "end not
+    // after start" as an overnight wrap turned this into a 24h suggestion that one
+    // tap would have logged as a full day.
+    const d = new Date(NOW)
+    d.setDate(d.getDate() - 1)
+    d.setHours(13, 30, 0, 0)
+    const start = d.getTime()
+    const zero: Shift = {
+      id: 'z', jobId: 'a', startedAt: start, endedAt: start, breakSecs: 0,
+      pausedAt: null, note: '', extraAgorot: 0, updatedAt: 0, deleted: false,
+    }
+    expect(derivePatterns([zero], [job('a')], NOW)).toEqual([])
+  })
+
+  it('ignores a shift shorter than half an hour', () => {
+    // Built by hand: the shift() helper reads equal hours as a 24h overnight shift.
+    const d = new Date(NOW)
+    d.setDate(d.getDate() - 1)
+    d.setHours(9, 0, 0, 0)
+    const start = d.getTime()
+    const brief: Shift = {
+      id: 'b', jobId: 'a', startedAt: start, endedAt: start + 20 * 60_000, breakSecs: 0,
+      pausedAt: null, note: '', extraAgorot: 0, updatedAt: 0, deleted: false,
+    }
+    expect(derivePatterns([brief], [job('a')], NOW)).toEqual([])
+  })
+
+  it('still recognises a genuine overnight shift', () => {
+    const [p] = derivePatterns([shift('1', 'a', 1, 22, 6)], [job('a')], NOW)
+    expect(p!.startMins).toBe(22 * 60)
+    expect(p!.endMins).toBe(30 * 60)
+    expect(patternWorkedSecs(p!)).toBe(8 * 3600)
+  })
+})
