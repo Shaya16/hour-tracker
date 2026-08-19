@@ -21,6 +21,7 @@
     "date-fns": "^4.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-mobile-picker": "^1.2.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -30,6 +31,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "esbuild": "^0.25.12",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
@@ -37,8 +39,7 @@
     "vitest": "^3.2.7",
     "workbox-build": "^7.4.1",
     "workbox-window": "^7.4.1",
-    "wrangler": "^4.124.0",
-    "esbuild": "^0.25.12"
+    "wrangler": "^4.124.0"
   },
   "engines": {
     "node": ">=20.16.0"

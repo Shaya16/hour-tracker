@@ -233,6 +233,7 @@ export function ShiftEditor({
                 label="End"
                 value={draft.endTime}
                 onChange={(v) => set('endTime', v)}
+                allowEmpty
               />
             </Field>
           </div>
