@@ -79,7 +79,11 @@ export function ShiftEditor({
 
     if (isNew) {
       const base = defaultDate ?? Date.now()
-      const job = activeJobs(state.jobs)[0]
+      // Follow the job focused in the tab bar. Opening "add shift" while looking at one
+      // job and getting a different one pre-selected is a silent way to file hours
+      // against the wrong employer. "All jobs" has no answer, so fall back to the first.
+      const active = activeJobs(state.jobs)
+      const job = active.find((j) => j.id === state.selectedJobId) ?? active[0]
       setDraft({
         jobId: job?.id ?? '',
         date: toDateInput(base),
