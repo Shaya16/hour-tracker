@@ -4,14 +4,11 @@ import { QuickLog } from '../components/QuickLog'
 import { ShiftRow } from '../components/ShiftRow'
 import { ChevronLeft, ChevronRight, PlusIcon } from '../components/ui/icons'
 import { AnimatedNumber } from '../components/ui/AnimatedNumber'
-import { Toast, useToast } from '../components/ui/Toast'
-import { Button, Card, EmptyState, Segmented, cx } from '../components/ui/primitives'
-import { Screen } from './TimerScreen'
+import { Button, Card, EmptyState, Screen, Segmented, cx } from '../components/ui/primitives'
 import { dayKey, dayRange, formatRangeLabel, monthRange, weekDays, weekRange } from '../lib/dates'
 import { hm, money } from '../lib/format'
 import { useNow } from '../lib/hooks'
 import { computeBreakdowns, sumBreakdowns } from '../lib/pay'
-import { patternToTimes, type ShiftPattern } from '../lib/quicklog'
 import { forJob, jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
 
 export function ShiftsScreen({
@@ -24,8 +21,6 @@ export function ShiftsScreen({
   const jobs = useStore((s) => s.jobs)
   const shifts = useStore((s) => s.shifts)
   const settings = useStore((s) => s.settings)
-  const addShift = useStore((s) => s.addShift)
-  const removeShift = useStore((s) => s.removeShift)
 
   const [cursor, setCursor] = useState(() => Date.now())
   /**
@@ -33,7 +28,6 @@ export function ShiftsScreen({
    * period, grouped by day, for finding something without tapping through dates.
    */
   const [view, setView] = useState<'day' | 'week' | 'month'>('day')
-  const { toast, show, dismiss } = useToast()
   const selectedJobId = useStore((s) => s.selectedJobId)
   const running = useMemo(() => runningShift(shifts), [shifts])
   const now = useNow(1000, Boolean(running))
@@ -101,22 +95,6 @@ export function ShiftsScreen({
   }, [periodShifts, periodBreakdowns])
 
   const today = Date.now()
-
-  function logPattern(pattern: ShiftPattern) {
-    const { startedAt, endedAt } = patternToTimes(pattern, cursor)
-    const created = addShift({
-      jobId: pattern.jobId,
-      startedAt,
-      endedAt,
-      breakSecs: pattern.breakSecs,
-    })
-    const job = byId.get(pattern.jobId)
-    show({
-      message: `${job?.name ?? 'Shift'} logged`,
-      actionLabel: 'Undo',
-      onAction: () => removeShift(created.id),
-    })
-  }
 
   return (
     <Screen>
@@ -250,8 +228,9 @@ export function ShiftsScreen({
           />
         </div>
 
-        {/* The goal is expressed per week, so the bar is meaningless over a month. */}
-        {settings.weeklyGoalHours > 0 && !isMonth ? (
+        {/* The goal is expressed per week across every job, so the bar is meaningless
+            over a month, and equally so when the view is narrowed to one job. */}
+        {settings.weeklyGoalHours > 0 && !isMonth && selectedJobId === null ? (
           <div className="h-[3px] rounded-full bg-sunken mt-2.5 overflow-hidden">
             <div
               className="h-full rounded-full bg-brand"
@@ -266,7 +245,7 @@ export function ShiftsScreen({
         )}
       </div>
 
-      <QuickLog day={cursor} onPick={logPattern} onCustom={() => onAddShift(cursor)} />
+      <QuickLog day={cursor} onCustom={() => onAddShift(cursor)} />
 
       {view === 'day' ? (
         <>
@@ -287,7 +266,7 @@ export function ShiftsScreen({
             <Card>
               <EmptyState
                 title="No shifts this day"
-                body="Add one by hand, or use the timer on the Timer tab."
+                body="Add one by hand, or use the timer on the Home tab."
                 action={
                   <Button variant="soft" onClick={() => onAddShift(cursor)}>
                     <PlusIcon size={16} /> Add shift
@@ -316,7 +295,7 @@ export function ShiftsScreen({
         <Card className="mt-6">
           <EmptyState
             title={isMonth ? 'Nothing logged this month' : 'Nothing logged this week'}
-            body="Add a shift by hand, or use the timer on the Timer tab."
+            body="Add a shift by hand, or use the timer on the Home tab."
             action={
               <Button variant="soft" onClick={() => onAddShift(cursor)}>
                 <PlusIcon size={16} /> Add shift
@@ -355,8 +334,6 @@ export function ShiftsScreen({
           ))}
         </div>
       )}
-
-      <Toast toast={toast} onDismiss={dismiss} />
     </Screen>
   )
 }

@@ -39,6 +39,20 @@ export function Card({
   return <div className={cx(base, className)}>{children}</div>
 }
 
+/** The padded, animated column every screen's content sits in. */
+export function Screen({ children }: { children: ReactNode }) {
+  return <div className="px-5 pt-4 pb-6 animate-screen-in">{children}</div>
+}
+
+export function Header({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <h1 className="t-h1 text-ink">{title}</h1>
+      {action}
+    </div>
+  )
+}
+
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-2.5 mt-6 px-0.5">

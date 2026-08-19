@@ -5,8 +5,15 @@ import { JobDonut, JobLegend, type DonutSlice } from '../components/charts/JobDo
 import { StackedWeekBars, type DayBar } from '../components/charts/StackedWeekBars'
 import { ChevronLeft, ChevronRight, DownloadIcon } from '../components/ui/icons'
 import { AnimatedNumber } from '../components/ui/AnimatedNumber'
-import { Button, Card, Divider, SectionTitle, Segmented } from '../components/ui/primitives'
-import { Header, Screen } from './TimerScreen'
+import {
+  Button,
+  Card,
+  Divider,
+  Header,
+  Screen,
+  SectionTitle,
+  Segmented,
+} from '../components/ui/primitives'
 import { downloadFile, shiftsToCsv } from '../lib/csv'
 import {
   dayKey,

@@ -6,3 +6,6 @@ dev-dist
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Per-machine Claude Code permissions, not shared state.
+.claude/settings.local.json

@@ -1,12 +1,12 @@
-import { CalendarIcon, ChartIcon, SettingsIcon, TimerIcon } from './icons'
+import { CalendarIcon, ChartIcon, HomeIcon, SettingsIcon } from './icons'
 import { cx } from './primitives'
 import { haptic } from '../../lib/hooks'
 import { JobSwitcher } from '../JobSwitcher'
 
-export type TabKey = 'timer' | 'shifts' | 'reports' | 'settings'
+export type TabKey = 'home' | 'shifts' | 'reports' | 'settings'
 
-const TABS: { key: TabKey; label: string; Icon: typeof TimerIcon }[] = [
-  { key: 'timer', label: 'Timer', Icon: TimerIcon },
+const TABS: { key: TabKey; label: string; Icon: typeof HomeIcon }[] = [
+  { key: 'home', label: 'Home', Icon: HomeIcon },
   { key: 'shifts', label: 'Shifts', Icon: CalendarIcon },
   { key: 'reports', label: 'Reports', Icon: ChartIcon },
   { key: 'settings', label: 'Settings', Icon: SettingsIcon },
@@ -19,7 +19,7 @@ export function TabBar({
 }: {
   active: TabKey
   onChange: (t: TabKey) => void
-  /** Pulses a dot on the Timer tab so a running clock is visible from any screen. */
+  /** Pulses a dot on the Home tab so a running clock is visible from any screen. */
   running?: boolean
 }) {
   return (
@@ -56,7 +56,7 @@ export function TabBar({
                   )}
                   strokeWidth={isActive ? 2.15 : 1.75}
                 />
-                {key === 'timer' && running ? (
+                {key === 'home' && running ? (
                   <span className="absolute -top-px -right-1 size-[7px] rounded-full bg-green ring-2 ring-[var(--color-surface)]" />
                 ) : null}
               </span>

@@ -3,15 +3,15 @@ import { JobEditor } from './components/JobEditor'
 import { Onboarding } from './components/Onboarding'
 import { ShiftEditor } from './components/ShiftEditor'
 import { TabBar, type TabKey } from './components/ui/TabBar'
+import { HomeScreen } from './screens/HomeScreen'
 import { ReportsScreen } from './screens/ReportsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShiftsScreen } from './screens/ShiftsScreen'
-import { TimerScreen } from './screens/TimerScreen'
 import { runningShift, useStore } from './lib/store'
 import { startAutoSync } from './lib/sync'
 
 export default function App() {
-  const [tab, setTab] = useState<TabKey>('timer')
+  const [tab, setTab] = useState<TabKey>('home')
   const [editingShift, setEditingShift] = useState<string | null>(null)
   const [editingShiftDay, setEditingShiftDay] = useState<number | undefined>(undefined)
   const [editingJob, setEditingJob] = useState<string | null>(null)
@@ -51,6 +51,11 @@ export default function App() {
     setEditingShift(id)
   }
 
+  const addShiftOn = (day: number) => {
+    setEditingShiftDay(day)
+    setEditingShift('new')
+  }
+
   if (!onboarded && !hasJobs) {
     return (
       <Shell>
@@ -70,18 +75,17 @@ export default function App() {
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"
         key={tab}
       >
-        {tab === 'timer' ? (
-          <TimerScreen onEditShift={openShift} onAddJob={() => setEditingJob('new')} />
+        {tab === 'home' ? (
+          <HomeScreen
+            onEditShift={openShift}
+            onAddShift={addShiftOn}
+            onAddJob={() => setEditingJob('new')}
+            onOpenReports={() => setTab('reports')}
+          />
         ) : null}
 
         {tab === 'shifts' ? (
-          <ShiftsScreen
-            onEditShift={openShift}
-            onAddShift={(day) => {
-              setEditingShiftDay(day)
-              setEditingShift('new')
-            }}
-          />
+          <ShiftsScreen onEditShift={openShift} onAddShift={addShiftOn} />
         ) : null}
 
         {tab === 'reports' ? <ReportsScreen /> : null}

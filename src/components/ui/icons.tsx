@@ -188,3 +188,82 @@ export function EditIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps)
     </svg>
   )
 }
+
+export function HomeIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M3.5 10.5 12 3.5l8.5 7" {...S} strokeWidth={strokeWidth} />
+      <path
+        d="M5.5 9.8V19a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V9.8"
+        {...S}
+        strokeWidth={strokeWidth}
+      />
+      <path d="M9.5 20.5V15a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5.5" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function ClockIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="8.5" {...S} strokeWidth={strokeWidth} />
+      <path d="M12 7.2V12l3.4 2" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function ArrowRightIcon({ size = 24, className, strokeWidth = 2 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 12h15M13.5 6.5 19 12l-5.5 5.5" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function BoltIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M13.5 2.5 5 13.5h5.5L10 21.5 19 10.5h-5.5Z" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function NoteIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M5 6.5h14M5 12h14M5 17.5h8.5" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function TargetIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="8.5" {...S} strokeWidth={strokeWidth} />
+      <circle cx="12" cy="12" r="4" {...S} strokeWidth={strokeWidth} />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function TrendUpIcon({ size = 24, className, strokeWidth = 2 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M3 17.5 9.5 11l4 4L21 7.5" {...S} strokeWidth={strokeWidth} />
+      <path d="M15.5 7.5H21v5.5" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+export function ReceiptIcon({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M5.5 21V4.5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1V21l-2.6-1.6-2.4 1.6-2.4-1.6L8.1 21 5.5 19.4Z"
+        {...S}
+        strokeWidth={strokeWidth}
+      />
+      <path d="M9 8.5h6M9 12.5h4" {...S} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}

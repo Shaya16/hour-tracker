@@ -10,8 +10,20 @@ import {
   PlusIcon,
   UploadIcon,
 } from '../components/ui/icons'
-import { Button, Card, Divider, EmptyState, Field, Input, Row, SectionTitle, Select, cx } from '../components/ui/primitives'
-import { Header, Screen } from './TimerScreen'
+import {
+  Button,
+  Card,
+  Divider,
+  EmptyState,
+  Field,
+  Header,
+  Input,
+  Row,
+  Screen,
+  SectionTitle,
+  Select,
+  cx,
+} from '../components/ui/primitives'
 import { downloadFile, shiftsToCsv } from '../lib/csv'
 import { money, parseNum } from '../lib/format'
 import { computeBreakdowns } from '../lib/pay'
