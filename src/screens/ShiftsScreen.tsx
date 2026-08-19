@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { addDays, format, isSameDay as sameDay, startOfDay } from 'date-fns'
+import { addDays, addMonths, format, isSameDay as sameDay, startOfDay } from 'date-fns'
 import { QuickLog } from '../components/QuickLog'
 import { ShiftRow } from '../components/ShiftRow'
 import { ChevronLeft, ChevronRight, PlusIcon } from '../components/ui/icons'
@@ -7,7 +7,7 @@ import { AnimatedNumber } from '../components/ui/AnimatedNumber'
 import { Toast, useToast } from '../components/ui/Toast'
 import { Button, Card, EmptyState, Segmented, cx } from '../components/ui/primitives'
 import { Screen } from './TimerScreen'
-import { dayKey, dayRange, weekDays, weekRange } from '../lib/dates'
+import { dayKey, dayRange, formatRangeLabel, monthRange, weekDays, weekRange } from '../lib/dates'
 import { hm, money } from '../lib/format'
 import { useNow } from '../lib/hooks'
 import { computeBreakdowns, sumBreakdowns } from '../lib/pay'
@@ -29,39 +29,45 @@ export function ShiftsScreen({
 
   const [cursor, setCursor] = useState(() => Date.now())
   /**
-   * Day view answers "what did I do on this date"; list view answers "show me the
-   * week" without tapping through seven days to find one shift.
+   * Day answers "what did I do on this date". Week and Month list every shift in the
+   * period, grouped by day, for finding something without tapping through dates.
    */
-  const [view, setView] = useState<'day' | 'list'>('day')
+  const [view, setView] = useState<'day' | 'week' | 'month'>('day')
   const { toast, show, dismiss } = useToast()
   const selectedJobId = useStore((s) => s.selectedJobId)
   const running = useMemo(() => runningShift(shifts), [shifts])
   const now = useNow(1000, Boolean(running))
 
+  const isMonth = view === 'month'
   const byId = useMemo(() => jobsById(jobs), [jobs])
   const days = useMemo(() => weekDays(cursor, settings.weekStartsOn), [cursor, settings.weekStartsOn])
-  const week = useMemo(() => weekRange(cursor, settings.weekStartsOn), [cursor, settings.weekStartsOn])
 
-  const weekShifts = useMemo(
-    () => forJob(shiftsInRange(liveShifts(shifts), week.start, week.end), selectedJobId),
-    [shifts, week.start, week.end, selectedJobId],
+  /** Day and Week both operate on a week; Month widens the same machinery. */
+  const period = useMemo(
+    () => (isMonth ? monthRange(cursor) : weekRange(cursor, settings.weekStartsOn)),
+    [isMonth, cursor, settings.weekStartsOn],
   )
-  const weekBreakdowns = useMemo(
-    () => computeBreakdowns(weekShifts, byId, now),
-    [weekShifts, byId, now],
-  )
-  const weekTotals = useMemo(() => sumBreakdowns(weekBreakdowns.values()), [weekBreakdowns])
 
-  // Worked seconds per weekday, for the dots under the day strip.
+  const periodShifts = useMemo(
+    () => forJob(shiftsInRange(liveShifts(shifts), period.start, period.end), selectedJobId),
+    [shifts, period.start, period.end, selectedJobId],
+  )
+  const periodBreakdowns = useMemo(
+    () => computeBreakdowns(periodShifts, byId, now),
+    [periodShifts, byId, now],
+  )
+  const periodTotals = useMemo(() => sumBreakdowns(periodBreakdowns.values()), [periodBreakdowns])
+
+  // Worked seconds per day, for the dots under the day strip.
   const perDay = useMemo(() => {
     const m = new Map<string, number>()
-    for (const s of weekShifts) {
-      const b = weekBreakdowns.get(s.id)
+    for (const s of periodShifts) {
+      const b = periodBreakdowns.get(s.id)
       if (!b) continue
       m.set(b.dayKey, (m.get(b.dayKey) ?? 0) + b.workedSecs)
     }
     return m
-  }, [weekShifts, weekBreakdowns])
+  }, [periodShifts, periodBreakdowns])
 
   const selectedDay = useMemo(() => dayRange(cursor), [cursor])
   const dayShifts = useMemo(
@@ -74,10 +80,10 @@ export function ShiftsScreen({
   )
   const dayTotals = useMemo(() => sumBreakdowns(dayBreakdowns.values()), [dayBreakdowns])
 
-  /** The week's shifts grouped by day, newest day first, empty days omitted. */
+  /** The period's shifts grouped by day, newest day first, empty days omitted. */
   const grouped = useMemo(() => {
-    const byDay = new Map<string, typeof weekShifts>()
-    for (const s of weekShifts) {
+    const byDay = new Map<string, typeof periodShifts>()
+    for (const s of periodShifts) {
       const k = dayKey(s.startedAt)
       const list = byDay.get(k)
       if (list) list.push(s)
@@ -88,11 +94,11 @@ export function ShiftsScreen({
       .map(([key, list]) => {
         const sorted = [...list].sort((a, b) => a.startedAt - b.startedAt)
         const totals = sumBreakdowns(
-          sorted.map((s) => weekBreakdowns.get(s.id)).filter((b) => b !== undefined),
+          sorted.map((s) => periodBreakdowns.get(s.id)).filter((b) => b !== undefined),
         )
         return { key, date: sorted[0]!.startedAt, shifts: sorted, totals }
       })
-  }, [weekShifts, weekBreakdowns])
+  }, [periodShifts, periodBreakdowns])
 
   const today = Date.now()
 
@@ -120,10 +126,11 @@ export function ShiftsScreen({
         <h1 className="t-h1 text-ink">Shifts</h1>
         <div className="flex items-center gap-2">
           <Segmented
-            className="w-[168px]"
+            className="w-[186px]"
             options={[
               { value: 'day', label: 'Day' },
-              { value: 'list', label: 'Week' },
+              { value: 'week', label: 'Week' },
+              { value: 'month', label: 'Month' },
             ]}
             value={view}
             onChange={setView}
@@ -145,19 +152,30 @@ export function ShiftsScreen({
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            aria-label="Previous week"
-            onClick={() => setCursor((c) => addDays(new Date(c), -7).getTime())}
+            aria-label={isMonth ? 'Previous month' : 'Previous week'}
+            onClick={() =>
+              setCursor((c) =>
+                isMonth ? addMonths(new Date(c), -1).getTime() : addDays(new Date(c), -7).getTime(),
+              )
+            }
             className="grid place-items-center size-8 shrink-0 rounded-full text-muted press"
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="t-micro text-muted uppercase tabular">
-            {format(week.start, 'MMMM yyyy')}
+          {/* Name the actual dates, not just the month. Without the day strip below it
+              — which Week and Month both hide — a bare month gave no clue which week
+              you had navigated to. */}
+          <span className="t-micro text-muted uppercase tabular text-center">
+            {formatRangeLabel(period, isMonth ? 'month' : 'week')}
           </span>
           <button
             type="button"
-            aria-label="Next week"
-            onClick={() => setCursor((c) => addDays(new Date(c), 7).getTime())}
+            aria-label={isMonth ? 'Next month' : 'Next week'}
+            onClick={() =>
+              setCursor((c) =>
+                isMonth ? addMonths(new Date(c), 1).getTime() : addDays(new Date(c), 7).getTime(),
+              )
+            }
             className="grid place-items-center size-8 shrink-0 rounded-full text-muted press"
           >
             <ChevronRight size={18} />
@@ -220,24 +238,25 @@ export function ShiftsScreen({
       <div className="mb-6">
         <div className="flex items-baseline justify-between gap-3">
           <span className="tabular font-bold text-[21px] tracking-[-0.03em] text-ink">
-            {hm(weekTotals.workedSecs)}
+            {hm(periodTotals.workedSecs)}
             <span className="t-small text-muted font-medium ml-1.5 tracking-normal">
-              this week
+              {isMonth ? 'this month' : 'this week'}
             </span>
           </span>
           <AnimatedNumber
-            value={weekTotals.totalAgorot}
+            value={periodTotals.totalAgorot}
             format={(v) => money(v, settings.currencySymbol)}
             className="tabular font-bold text-[21px] tracking-[-0.03em] text-brand"
           />
         </div>
 
-        {settings.weeklyGoalHours > 0 ? (
+        {/* The goal is expressed per week, so the bar is meaningless over a month. */}
+        {settings.weeklyGoalHours > 0 && !isMonth ? (
           <div className="h-[3px] rounded-full bg-sunken mt-2.5 overflow-hidden">
             <div
               className="h-full rounded-full bg-brand"
               style={{
-                width: `${Math.min(100, (weekTotals.workedSecs / (settings.weeklyGoalHours * 3600)) * 100)}%`,
+                width: `${Math.min(100, (periodTotals.workedSecs / (settings.weeklyGoalHours * 3600)) * 100)}%`,
                 transition: 'width var(--dur-slow) var(--ease-out-expo)',
               }}
             />
@@ -296,7 +315,7 @@ export function ShiftsScreen({
       ) : grouped.length === 0 ? (
         <Card className="mt-6">
           <EmptyState
-            title="Nothing logged this week"
+            title={isMonth ? 'Nothing logged this month' : 'Nothing logged this week'}
             body="Add a shift by hand, or use the timer on the Timer tab."
             action={
               <Button variant="soft" onClick={() => onAddShift(cursor)}>
@@ -326,7 +345,7 @@ export function ShiftsScreen({
                     key={s.id}
                     shift={s}
                     job={byId.get(s.jobId)}
-                    breakdown={weekBreakdowns.get(s.id)}
+                    breakdown={periodBreakdowns.get(s.id)}
                     currency={settings.currencySymbol}
                     onClick={() => onEditShift(s.id)}
                   />
