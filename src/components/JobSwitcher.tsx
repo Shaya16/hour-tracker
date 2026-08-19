@@ -58,7 +58,11 @@ export function JobSwitcher() {
         </button>
       </div>
 
-      <Sheet open={open} onClose={() => setOpen(false)} title="Show">
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Show"
+      >
         <div className="flex flex-col gap-1 pt-1 pb-2">
           <Option
             label="All jobs"

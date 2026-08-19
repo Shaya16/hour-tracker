@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface ToastState {
   message: string
@@ -35,7 +36,9 @@ export function useToast(timeoutMs = 6000) {
 
 export function Toast({ toast, onDismiss }: { toast: ToastState | null; onDismiss: () => void }) {
   if (!toast) return null
-  return (
+  // Portalled for the same reason as Sheet: a transformed ancestor would otherwise
+  // capture this fixed element and place it somewhere other than the screen edge.
+  return createPortal(
     <div
       className="fixed inset-x-0 z-40 flex justify-center px-4 pointer-events-none"
       style={{ bottom: 'calc(max(0.5rem, env(safe-area-inset-bottom)) + var(--nav-h) + 0.75rem)' }}
@@ -57,6 +60,7 @@ export function Toast({ toast, onDismiss }: { toast: ToastState | null; onDismis
           </button>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

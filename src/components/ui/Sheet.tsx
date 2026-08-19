@@ -1,8 +1,18 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { backdropDismiss } from '../../lib/overlay'
 import { CloseIcon } from './icons'
 
 /**
  * Bottom sheet used for every edit form.
+ *
+ * Rendered through a portal into <body>, which is not cosmetic. A `position: fixed`
+ * element is positioned against the viewport only if no ancestor has a transform — and
+ * these panels animate in with one. A sheet opened from inside another sheet therefore
+ * ended up positioned against the parent panel instead of the screen, landing hundreds
+ * of pixels down: its backdrop covered the wrong area, taps hit the wrong targets, and
+ * closing it looked like the sheet jumping or reopening. The portal makes that
+ * impossible regardless of what is on screen when it opens.
  *
  * Locks body scroll while open and closes on Escape. The panel caps at 92vh and scrolls
  * internally, so a long form on a small phone never pushes its own save button off screen.
@@ -36,11 +46,11 @@ export function Sheet({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
         className="absolute inset-0 bg-[var(--color-scrim)] animate-fade-in"
-        onClick={onClose}
+        onPointerDown={backdropDismiss(onClose)}
         aria-hidden
       />
       <div
@@ -77,7 +87,8 @@ export function Sheet({
           <div style={{ height: 'env(safe-area-inset-bottom)' }} />
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -98,9 +109,13 @@ export function ConfirmSheet({
   confirmLabel?: string
 }) {
   if (!open) return null
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-[var(--color-scrim)] animate-fade-in" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-[var(--color-scrim)] animate-fade-in"
+        onPointerDown={backdropDismiss(onClose)}
+        aria-hidden
+      />
       <div
         role="alertdialog"
         aria-modal="true"
@@ -129,6 +144,7 @@ export function ConfirmSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -49,6 +49,7 @@ export function TimeField({
 }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(() => splitOrNow(value))
+  const close = () => setOpen(false)
   useEffect(() => {
     if (!open) return
     // Re-seed on open only — not on every `value` change — so a pick in progress is
@@ -80,7 +81,7 @@ export function TimeField({
 
       <Sheet
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         title={label}
         footer={
           <div className="flex gap-2">
@@ -90,7 +91,7 @@ export function TimeField({
                 size="lg"
                 onClick={() => {
                   onChange('')
-                  setOpen(false)
+                  close()
                 }}
               >
                 Still running
@@ -101,7 +102,7 @@ export function TimeField({
               className="flex-1"
               onClick={() => {
                 onChange(`${draft.hour}:${draft.minute}`)
-                setOpen(false)
+                close()
               }}
             >
               Set {draft.hour}:{draft.minute}
