@@ -43,6 +43,14 @@ interface State {
   syncError: string | null
   /** Set once the first-run wizard has been dismissed. */
   onboarded: boolean
+  /**
+   * Which job the whole app is currently focused on; null means all of them.
+   *
+   * A per-device view preference, not data — it is persisted locally but deliberately
+   * kept out of the sync payload, since which job you are looking at on your phone
+   * says nothing about what your laptop should be showing.
+   */
+  selectedJobId: string | null
 
   // Jobs
   addJob: (partial?: Partial<Job>) => Job
@@ -72,6 +80,7 @@ interface State {
   setLastSyncedAt: (ts: number) => void
   setLastPushMark: (ts: number) => void
   setOnboarded: (v: boolean) => void
+  setSelectedJobId: (id: string | null) => void
 
   /** Replace local data with a merged set from the sync layer. */
   mergeRemote: (data: {
@@ -136,6 +145,7 @@ export const useStore = create<State>()(
       syncStatus: 'idle',
       syncError: null,
       onboarded: false,
+      selectedJobId: null,
 
       addJob: (partial = {}) => {
         const ts = now()
@@ -171,6 +181,7 @@ export const useStore = create<State>()(
           invoices: s.invoices.map((i) =>
             i.jobId === id ? { ...i, deleted: true, updatedAt: now() } : i,
           ),
+          selectedJobId: s.selectedJobId === id ? null : s.selectedJobId,
         })),
 
       addShift: (partial) => {
@@ -277,6 +288,7 @@ export const useStore = create<State>()(
       setLastSyncedAt: (lastSyncedAt) => set({ lastSyncedAt }),
       setLastPushMark: (lastPushMark) => set({ lastPushMark }),
       setOnboarded: (onboarded) => set({ onboarded }),
+      setSelectedJobId: (selectedJobId) => set({ selectedJobId }),
 
       // Bail out entirely when a sync brought nothing new, so subscribers stay quiet.
       mergeRemote: ({ jobs, shifts, invoices, settings }) =>
@@ -322,6 +334,7 @@ export const useStore = create<State>()(
           syncStatus: 'idle',
           syncError: null,
           onboarded: false,
+          selectedJobId: null,
         }),
     }),
     {
@@ -336,6 +349,7 @@ export const useStore = create<State>()(
         lastSyncedAt: s.lastSyncedAt,
         lastPushMark: s.lastPushMark,
         onboarded: s.onboarded,
+        selectedJobId: s.selectedJobId,
       }),
     },
   ),
@@ -357,6 +371,13 @@ export const jobsById = (jobs: Job[]): Map<string, Job> =>
 
 export const runningShift = (shifts: Shift[]): Shift | undefined =>
   shifts.find((s) => !s.deleted && s.endedAt === null)
+
+/**
+ * Narrow a collection to the focused job. `null` means no filter.
+ * Used by every screen so the global selection means the same thing everywhere.
+ */
+export const forJob = <T extends { jobId: string }>(items: T[], jobId: string | null): T[] =>
+  jobId === null ? items : items.filter((i) => i.jobId === jobId)
 
 /** Shifts whose *start* falls inside [start, end], newest first. */
 export const shiftsInRange = (shifts: Shift[], start: number, end: number): Shift[] =>

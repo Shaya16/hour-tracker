@@ -29,8 +29,19 @@ export function TimerScreen({
   const live = useMemo(() => activeJobs(jobs), [jobs])
   const running = useMemo(() => runningShift(shifts), [shifts])
 
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
-  const activeJobId = running?.jobId ?? selectedJobId ?? live[0]?.id ?? null
+  const globalJobId = useStore((s) => s.selectedJobId)
+  const [localJobId, setLocalJobId] = useState<string | null>(null)
+
+  /**
+   * Which job the clock will start on.
+   *
+   * A running shift always wins — you cannot retarget hours that are already accruing.
+   * Otherwise the global focus decides, and only when that is "All jobs" does the local
+   * pick apply. The pills below stay visible in exactly that case, because starting a
+   * timer needs one unambiguous job and "all" is not an answer.
+   */
+  const activeJobId = running?.jobId ?? globalJobId ?? localJobId ?? live[0]?.id ?? null
+  const showJobPills = globalJobId === null
 
   // Only tick while a clock is actually running.
   const now = useNow(1000, Boolean(running))
@@ -109,8 +120,10 @@ export function TimerScreen({
         }
       />
 
-      {/* Job picker — locked to the running job while the clock is going, since switching
-          mid-shift would silently misattribute the hours. */}
+      {/* Job picker — only needed while the global focus is "All jobs"; otherwise the
+          switcher in the tab bar has already answered the question. Locked to the running
+          job while the clock is going, since switching mid-shift would misattribute hours. */}
+      {showJobPills ? (
       <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
         {live.map((j) => {
           const c = colors[j.color]
@@ -121,7 +134,7 @@ export function TimerScreen({
               key={j.id}
               type="button"
               disabled={locked}
-              onClick={() => setSelectedJobId(j.id)}
+              onClick={() => setLocalJobId(j.id)}
               className={cx(
                 'shrink-0 h-9 px-4 rounded-full text-[13.5px] font-semibold press',
                 locked && 'opacity-30',
@@ -147,6 +160,7 @@ export function TimerScreen({
           <PlusIcon size={16} />
         </button>
       </div>
+      ) : null}
 
       <Card className="mt-3.5 p-5 pb-5">
         <div className="flex justify-center pt-1 pb-5">
@@ -191,7 +205,8 @@ export function TimerScreen({
             onClick={() => activeJobId && startShift(activeJobId)}
             disabled={!activeJobId}
           >
-            <PlayIcon size={17} /> Start shift
+            <PlayIcon size={17} />
+            {activeJob ? `Start · ${activeJob.name}` : 'Start shift'}
           </Button>
         ) : (
           <div className="flex gap-2.5">

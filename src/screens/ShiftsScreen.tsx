@@ -12,7 +12,7 @@ import { hm, money } from '../lib/format'
 import { useNow } from '../lib/hooks'
 import { computeBreakdowns, sumBreakdowns } from '../lib/pay'
 import { patternToTimes, type ShiftPattern } from '../lib/quicklog'
-import { jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
+import { forJob, jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
 
 export function ShiftsScreen({
   onEditShift,
@@ -29,6 +29,7 @@ export function ShiftsScreen({
 
   const [cursor, setCursor] = useState(() => Date.now())
   const { toast, show, dismiss } = useToast()
+  const selectedJobId = useStore((s) => s.selectedJobId)
   const running = useMemo(() => runningShift(shifts), [shifts])
   const now = useNow(1000, Boolean(running))
 
@@ -37,8 +38,8 @@ export function ShiftsScreen({
   const week = useMemo(() => weekRange(cursor, settings.weekStartsOn), [cursor, settings.weekStartsOn])
 
   const weekShifts = useMemo(
-    () => shiftsInRange(liveShifts(shifts), week.start, week.end),
-    [shifts, week.start, week.end],
+    () => forJob(shiftsInRange(liveShifts(shifts), week.start, week.end), selectedJobId),
+    [shifts, week.start, week.end, selectedJobId],
   )
   const weekBreakdowns = useMemo(
     () => computeBreakdowns(weekShifts, byId, now),
@@ -59,8 +60,8 @@ export function ShiftsScreen({
 
   const selectedDay = useMemo(() => dayRange(cursor), [cursor])
   const dayShifts = useMemo(
-    () => shiftsInRange(liveShifts(shifts), selectedDay.start, selectedDay.end),
-    [shifts, selectedDay.start, selectedDay.end],
+    () => forJob(shiftsInRange(liveShifts(shifts), selectedDay.start, selectedDay.end), selectedJobId),
+    [shifts, selectedDay.start, selectedDay.end, selectedJobId],
   )
   const dayBreakdowns = useMemo(
     () => computeBreakdowns(dayShifts, byId, now),

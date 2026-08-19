@@ -19,26 +19,31 @@ import {
 import { hm, humanDuration, money, multToPercent } from '../lib/format'
 import { useNow } from '../lib/hooks'
 import { computeBreakdowns, groupByDayAndJob, groupByJob, sumBreakdowns } from '../lib/pay'
-import { allLiveJobs, jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
+import { allLiveJobs, forJob, jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
 
 export function ReportsScreen() {
   const jobs = useStore((s) => s.jobs)
   const shifts = useStore((s) => s.shifts)
   const settings = useStore((s) => s.settings)
 
+  const selectedJobId = useStore((s) => s.selectedJobId)
   const [kind, setKind] = useState<PeriodKind>('week')
   const [cursor, setCursor] = useState(() => Date.now())
 
   const running = useMemo(() => runningShift(shifts), [shifts])
   const now = useNow(30_000, Boolean(running))
 
-  const jobList = useMemo(() => allLiveJobs(jobs), [jobs])
+  // Charts and the legend show only the focused job when one is picked.
+  const jobList = useMemo(
+    () => allLiveJobs(jobs).filter((j) => selectedJobId === null || j.id === selectedJobId),
+    [jobs, selectedJobId],
+  )
   const byId = useMemo(() => jobsById(jobs), [jobs])
   const range = useMemo(() => periodRange(cursor, kind, settings), [cursor, kind, settings])
 
   const periodShifts = useMemo(
-    () => shiftsInRange(liveShifts(shifts), range.start, range.end),
-    [shifts, range.start, range.end],
+    () => forJob(shiftsInRange(liveShifts(shifts), range.start, range.end), selectedJobId),
+    [shifts, range.start, range.end, selectedJobId],
   )
   const breakdowns = useMemo(
     () => computeBreakdowns(periodShifts, byId, now),

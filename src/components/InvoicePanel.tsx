@@ -7,7 +7,7 @@ import { toDateInput } from '../lib/dates'
 import { hm, money, parseMoney } from '../lib/format'
 import { useJobColors } from '../lib/hooks'
 import { invoicesForJob, jobBalances, previewInvoice } from '../lib/invoices'
-import { activeJobs, jobsById, liveShifts, useStore } from '../lib/store'
+import { activeJobs, forJob, jobsById, liveShifts, useStore } from '../lib/store'
 import type { Invoice } from '../lib/types'
 
 /** End of the given local day — invoices cover whole days, not moments. */
@@ -32,7 +32,11 @@ export function InvoicePanel() {
   const removeInvoice = useStore((s) => s.removeInvoice)
 
   const colors = useJobColors()
-  const live = useMemo(() => activeJobs(jobs), [jobs])
+  const selectedJobId = useStore((s) => s.selectedJobId)
+  const live = useMemo(
+    () => activeJobs(jobs).filter((j) => selectedJobId === null || j.id === selectedJobId),
+    [jobs, selectedJobId],
+  )
   const byId = useMemo(() => jobsById(jobs), [jobs])
   const allShifts = useMemo(() => liveShifts(shifts), [shifts])
 
@@ -46,11 +50,13 @@ export function InvoicePanel() {
 
   const history = useMemo(
     () =>
-      invoices
-        .filter((i) => !i.deleted)
+      forJob(
+        invoices.filter((i) => !i.deleted),
+        selectedJobId,
+      )
         .sort((a, b) => b.periodEnd - a.periodEnd)
         .slice(0, 12),
-    [invoices],
+    [invoices, selectedJobId],
   )
 
   if (live.length === 0) return null

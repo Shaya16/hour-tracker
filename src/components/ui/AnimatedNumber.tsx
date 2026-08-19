@@ -9,54 +9,68 @@ import { useEffect, useRef, useState } from 'react'
  *
  * Deliberately *not* used for the running timer: a clock must show the real time, and
  * easing toward it would mean displaying a value that is briefly a lie.
+ *
+ * **Correctness beats the animation.** These are money figures, so the value must always
+ * arrive at its target even if the animation cannot run — browsers suspend
+ * requestAnimationFrame in a hidden document, and without a guarantee the display would
+ * simply freeze mid-count and show a stale number. Two safeguards: no animation at all
+ * while hidden, and a timer that force-lands the value if the frame loop never finishes.
  */
 export function useAnimatedValue(target: number, duration = 520): number {
   const [value, setValue] = useState(target)
   const fromRef = useRef(target)
-  const startRef = useRef(0)
   const rafRef = useRef(0)
+  const timeoutRef = useRef(0)
 
   useEffect(() => {
-    // First paint, or a jump so large it is a context switch rather than an update
-    // (changing period on Reports) — land on it immediately.
     if (fromRef.current === target) return
+
+    const land = () => {
+      fromRef.current = target
+      setValue(target)
+    }
 
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    if (prefersReduced) {
-      fromRef.current = target
-      setValue(target)
+    // A hidden document throttles or suspends rAF, so animating would strand the value.
+    if (prefersReduced || (typeof document !== 'undefined' && document.hidden)) {
+      land()
       return
     }
 
     const from = fromRef.current
     const delta = target - from
-    startRef.current = 0
+    let start = 0
 
     const tick = (now: number) => {
-      if (startRef.current === 0) startRef.current = now
-      const elapsed = now - startRef.current
-      const t = Math.min(1, elapsed / duration)
+      if (start === 0) start = now
+      const t = Math.min(1, (now - start) / duration)
       // easeOutExpo — fast commitment, gentle settle. Matches --ease-out-expo.
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
       setValue(from + delta * eased)
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(tick)
-      } else {
-        fromRef.current = target
-      }
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+      else land()
     }
 
     rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [target, duration])
 
-  // Keep the ref honest if the component re-renders mid-flight.
-  useEffect(() => {
-    if (rafRef.current === 0) fromRef.current = target
-  }, [target])
+    // Backstop: if the frame loop is throttled away, land on the target anyway.
+    timeoutRef.current = window.setTimeout(land, duration + 300)
+
+    // Leaving the tab mid-count would otherwise freeze a half-way figure on screen.
+    const onHide = () => {
+      if (document.hidden) land()
+    }
+    document.addEventListener('visibilitychange', onHide)
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      window.clearTimeout(timeoutRef.current)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [target, duration])
 
   return value
 }

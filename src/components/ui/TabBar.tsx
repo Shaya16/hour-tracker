@@ -1,6 +1,7 @@
 import { CalendarIcon, ChartIcon, SettingsIcon, TimerIcon } from './icons'
 import { cx } from './primitives'
 import { haptic } from '../../lib/hooks'
+import { JobSwitcher } from '../JobSwitcher'
 
 export type TabKey = 'timer' | 'shifts' | 'reports' | 'settings'
 
@@ -32,6 +33,7 @@ export function TabBar({
       }}
     >
       <div className="flex items-stretch px-1 pt-2">
+        <div className="flex items-stretch flex-1 min-w-0">
         {TABS.map(({ key, label, Icon }) => {
           const isActive = key === active
           return (
@@ -69,6 +71,10 @@ export function TabBar({
             </button>
           )
         })}
+        </div>
+
+        {/* Not a tab: a filter. Kept visually separate on purpose — see JobSwitcher. */}
+        <JobSwitcher />
       </div>
     </nav>
   )
