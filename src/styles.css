@@ -1,0 +1,479 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Typeface
+
+   Inter, self-hosted and subset to the glyphs this app can render (~89 KB rather
+   than 344 KB). Self-hosted rather than a CDN because the app must work offline
+   and inside the installed PWA, where a third-party request would simply fail.
+
+   `size-adjust` and the metric overrides keep the fallback stack occupying almost
+   exactly the same space as Inter, so the first paint does not visibly reflow when
+   the font finishes loading.
+--------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/inter.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Arial');
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+@theme {
+  /* --- Surfaces (light) -------------------------------------------------- */
+  --color-canvas: #f4f5fa;
+  --color-surface: #ffffff;
+  --color-sunken: #eff1f7;
+  --color-hairline: #e7e9f2;
+  --color-scrim: rgba(16, 16, 34, 0.44);
+
+  /* --- Ink ---------------------------------------------------------------- */
+  --color-ink: #14142b;
+  --color-muted: #6b6b88;
+  --color-faint: #7e7e9c;
+
+  /* --- Brand -------------------------------------------------------------- */
+  --color-brand: #5b5bef;
+  --color-brand-ink: #ffffff;
+  --color-brand-soft: #ececfe;
+  --color-brand-edge: #4a4ad8;
+
+  /* --- Accents (also the chart palette) ----------------------------------- */
+  --color-violet: #8b5cf6;
+  --color-blue: #3b82f6;
+  --color-orange: #f5a623;
+  --color-red: #ef4444;
+  --color-teal: #14b8a6;
+  --color-pink: #ec4899;
+  --color-green: #22c55e;
+
+  /* --- Radii -------------------------------------------------------------- */
+  --radius-card: 22px;
+  --radius-inner: 14px;
+  --radius-chip: 11px;
+
+  /* --- Elevation ----------------------------------------------------------
+     Two layers each: a tight contact shadow plus a wide ambient one. Tinted with
+     the ink hue rather than pure black, which is what stops the UI looking grey
+     and muddy where cards overlap.                                          */
+  --shadow-xs: 0 1px 2px rgba(20, 20, 43, 0.05);
+  --shadow-sm:
+    0 1px 2px rgba(20, 20, 43, 0.05), 0 2px 6px -2px rgba(20, 20, 43, 0.06);
+  --shadow-md:
+    0 1px 3px rgba(20, 20, 43, 0.05), 0 6px 20px -6px rgba(20, 20, 43, 0.1);
+  --shadow-lg:
+    0 2px 6px rgba(20, 20, 43, 0.05), 0 16px 40px -12px rgba(20, 20, 43, 0.16);
+  --shadow-brand: 0 6px 20px -6px rgba(91, 91, 239, 0.5), 0 2px 6px -2px rgba(91, 91, 239, 0.3);
+  --shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  /* --- Motion -------------------------------------------------------------
+     One expressive curve for things entering, one gentle overshoot for things
+     the user directly manipulated, one symmetric curve for state changes.
+     Everything in the app uses these three; nothing invents its own.        */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-instant: 110ms;
+  --dur-fast: 190ms;
+  --dur-base: 300ms;
+  --dur-slow: 460ms;
+
+  /* --- Type ---------------------------------------------------------------- */
+  --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark theme
+
+   Only the tokens change — no component knows which theme is active. Two rules
+   that matter on dark backgrounds:
+
+   1. Shadows barely register, so elevation is carried by surface lightness and a
+      hairline border instead. Cards get *lighter* as they come forward.
+   2. The brand indigo is lifted and desaturated; #5B5BEF on near-black is harsh
+      and fails contrast against body text sat next to it.
+--------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #0b0b12;
+    --color-surface: #17171f;
+    --color-sunken: #21212c;
+    --color-hairline: #272733;
+    --color-scrim: rgba(0, 0, 0, 0.66);
+
+    --color-ink: #f1f1f7;
+    --color-muted: #9797b0;
+    --color-faint: #74748e;
+
+    --color-brand: #7d7dff;
+    --color-brand-ink: #0b0b12;
+    --color-brand-soft: #1f1f3a;
+    --color-brand-edge: #9494ff;
+
+    /* Chart palette, lifted for legibility on a dark ground. */
+    --color-violet: #a78bfa;
+    --color-blue: #60a5fa;
+    --color-orange: #fbbf24;
+    --color-red: #f87171;
+    --color-teal: #2dd4bf;
+    --color-pink: #f472b6;
+    --color-green: #4ade80;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.5), 0 20px 48px -16px rgba(0, 0, 0, 0.7);
+    --shadow-brand: 0 6px 22px -6px rgba(125, 125, 255, 0.45);
+    --shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    /* Paints the area behind a rubber-band overscroll on iOS. */
+    background: var(--color-canvas);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 450;
+    letter-spacing: -0.011em;
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+
+  /* The desktop backdrop the phone frame sits on. */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(1200px 800px at 20% -10%, #a8c6f7 0%, transparent 55%),
+        linear-gradient(155deg, #7b73ff 0%, #6257e8 45%, #4c3fd0 100%);
+      background-attachment: fixed;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background:
+          radial-gradient(1200px 800px at 20% -10%, #2b2b6b 0%, transparent 55%),
+          linear-gradient(155deg, #1a1938 0%, #14132b 50%, #0b0b18 100%);
+        background-attachment: fixed;
+      }
+    }
+  }
+
+  button {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    /* iOS zooms the viewport when focusing a control below 16px. */
+    font-size: max(16px, 1em);
+  }
+
+  /* Keyboard focus stays visible; pointer focus does not draw a ring. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: var(--color-brand-ink);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Type scale
+
+   Sizes are paired with tracking, because Inter needs progressively tighter
+   letter-spacing as it grows — set a 40px headline at default tracking and it
+   reads loose and amateurish. Weights above 700 are reserved for numbers, which
+   is where this app wants the eye to land.
+--------------------------------------------------------------------------- */
+
+@utility t-display {
+  font-size: 40px;
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+@utility t-h1 {
+  font-size: 29px;
+  line-height: 1.12;
+  font-weight: 760;
+  letter-spacing: -0.036em;
+}
+
+@utility t-h2 {
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 720;
+  letter-spacing: -0.028em;
+}
+
+@utility t-h3 {
+  font-size: 16.5px;
+  line-height: 1.3;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+@utility t-body {
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 450;
+  letter-spacing: -0.011em;
+}
+
+@utility t-label {
+  font-size: 13.5px;
+  line-height: 1.4;
+  font-weight: 560;
+  letter-spacing: -0.008em;
+}
+
+@utility t-small {
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.004em;
+}
+
+@utility t-micro {
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 620;
+  letter-spacing: 0.005em;
+}
+
+/* Numeric readouts must not jitter as digits change. */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* A crisp 1px edge that survives both themes — shadows alone read as fog. */
+@utility edge {
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-hairline);
+}
+
+@utility edge-md {
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-hairline);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+--------------------------------------------------------------------------- */
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Screen entrance. The rise is deliberately small — a big slide reads as a
+   website transition, not an app one. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.animate-sheet-in {
+  animation: sheet-in var(--dur-base) var(--ease-out-expo);
+}
+.animate-fade-in {
+  animation: fade-in var(--dur-fast) var(--ease-standard);
+}
+.animate-pop-in {
+  animation: pop-in var(--dur-fast) var(--ease-spring);
+}
+.animate-screen-in {
+  animation: screen-in var(--dur-base) var(--ease-out-expo);
+}
+
+/* Staggered list entrance. The cap matters: past ~8 items the delay becomes a
+   visible wait rather than a flourish, so later rows just land together. */
+.stagger > * {
+  animation: rise-in var(--dur-base) var(--ease-out-expo) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+.stagger > *:nth-child(n + 8) {
+  animation-delay: 280ms;
+}
+
+.pulse-ring {
+  animation: pulse-ring 2s var(--ease-out-expo) infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-sunken) 25%,
+    var(--color-hairline) 50%,
+    var(--color-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Every interactive surface presses the same way. */
+@utility press {
+  transition:
+    transform var(--dur-instant) var(--ease-standard),
+    box-shadow var(--dur-instant) var(--ease-standard),
+    background-color var(--dur-instant) var(--ease-standard);
+  &:active {
+    transform: scale(0.972);
+  }
+}
+
+@utility press-sm {
+  transition:
+    transform var(--dur-instant) var(--ease-standard),
+    background-color var(--dur-instant) var(--ease-standard);
+  &:active {
+    transform: scale(0.988);
+  }
+}
+
+/* Respect the OS setting — motion sickness is not a style preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
