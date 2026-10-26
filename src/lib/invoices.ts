@@ -14,6 +14,8 @@
  * rather than appearing as new outstanding work.
  */
 
+import { endOfDay, startOfDay } from 'date-fns'
+import type { Range } from './dates'
 import { computeBreakdowns, sumBreakdowns, type ShiftBreakdown } from './pay'
 import type { Invoice, Job, Shift } from './types'
 
@@ -138,6 +140,89 @@ export function previewInvoice(
     amountAgorot: totals.totalAgorot,
     shiftCount: covered.length,
   }
+}
+
+/**
+ * A stretch of work bounded by invoices rather than by the calendar — what Reports
+ * means by a pay period, since an employer pays for what was claimed, not for a month.
+ */
+export interface InvoicePeriod {
+  range: Range
+  /** The shifts this period covers, newest first. */
+  shifts: Shift[]
+  /** The invoice that closed this period; null while it is still open. */
+  invoice: Invoice | null
+}
+
+/**
+ * Everything not yet claimed: each job's work since its own last invoice.
+ *
+ * Jobs keep separate cutoffs, so across several jobs the range is only the envelope
+ * for labels and charts — the shifts are what decide what is covered, by the same
+ * rule `jobBalances` uses for the uninvoiced figure.
+ */
+export function openPeriod(shifts: Shift[], invoices: Invoice[], jobIds: string[], now: number): InvoicePeriod {
+  const covered: Shift[] = []
+  let start = Infinity
+  let lastCutoff = Infinity
+  let end = endOfDay(now).getTime()
+
+  for (const jobId of jobIds) {
+    const from = invoicedThrough(invoices, jobId)
+    const mine = shifts.filter((s) => !s.deleted && s.jobId === jobId && s.startedAt > from)
+    if (from > 0) lastCutoff = Math.min(lastCutoff, from + 1)
+    if (mine.length === 0) continue
+
+    // A job never invoiced opens on its first shift; otherwise the day after its cutoff.
+    let opens = from > 0 ? from + 1 : Infinity
+    for (const s of mine) {
+      if (from === 0) opens = Math.min(opens, startOfDay(s.startedAt).getTime())
+      end = Math.max(end, endOfDay(s.startedAt).getTime())
+    }
+    start = Math.min(start, opens)
+    covered.push(...mine)
+  }
+
+  // Nothing outstanding: still show the period as opening after the last claim.
+  if (start === Infinity) start = lastCutoff === Infinity ? startOfDay(now).getTime() : lastCutoff
+
+  return {
+    range: { start, end },
+    shifts: covered.sort((a, b) => b.startedAt - a.startedAt),
+    invoice: null,
+  }
+}
+
+/**
+ * The period one past invoice covered — `index` 0 is the most recent. Null when the
+ * job has fewer invoices than that.
+ *
+ * Only defined for a single job: two employers invoice on their own schedules, so
+ * "the previous invoice" across both is not one stretch of time.
+ */
+export function invoicedPeriod(
+  shifts: Shift[],
+  invoices: Invoice[],
+  jobId: string,
+  index: number,
+): InvoicePeriod | null {
+  const list = invoicesForJob(invoices, jobId)
+  const invoice = list[index]
+  if (!invoice) return null
+  const prev = list[index + 1]
+  const from = prev ? prev.periodEnd : 0
+
+  const covered = shifts
+    .filter((s) => !s.deleted && s.jobId === jobId && s.startedAt > from && s.startedAt <= invoice.periodEnd)
+    .sort((a, b) => b.startedAt - a.startedAt)
+
+  // The first invoice reaches back to the first shift it covered.
+  const earliest = covered[covered.length - 1]
+  const start = prev
+    ? prev.periodEnd + 1
+    : startOfDay(earliest ? earliest.startedAt : invoice.periodEnd).getTime()
+
+  return { range: { start, end: invoice.periodEnd }, shifts: covered, invoice }
 }
 
 /** Totals across every job, for the summary row. */

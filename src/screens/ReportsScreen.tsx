@@ -25,17 +25,29 @@ import {
 } from '../lib/dates'
 import { hm, humanDuration, money, multToPercent } from '../lib/format'
 import { useNow } from '../lib/hooks'
+import { invoicedPeriod, invoicesForJob, openPeriod } from '../lib/invoices'
 import { computeBreakdowns, groupByDayAndJob, groupByJob, sumBreakdowns } from '../lib/pay'
 import { allLiveJobs, forJob, jobsById, liveShifts, runningShift, shiftsInRange, useStore } from '../lib/store'
 
 export function ReportsScreen() {
   const jobs = useStore((s) => s.jobs)
   const shifts = useStore((s) => s.shifts)
+  const invoices = useStore((s) => s.invoices)
   const settings = useStore((s) => s.settings)
 
   const selectedJobId = useStore((s) => s.selectedJobId)
   const [kind, setKind] = useState<PeriodKind>('week')
   const [cursor, setCursor] = useState(() => Date.now())
+
+  // Pay periods step through invoices rather than the calendar: 0 is the open period,
+  // n is the n-th most recent invoice. Past invoices belong to one job, so focusing a
+  // different job starts back at the open period.
+  const [invoiceStep, setInvoiceStep] = useState(0)
+  const [stepFor, setStepFor] = useState(selectedJobId)
+  if (stepFor !== selectedJobId) {
+    setStepFor(selectedJobId)
+    setInvoiceStep(0)
+  }
 
   const running = useMemo(() => runningShift(shifts), [shifts])
   const now = useNow(30_000, Boolean(running))
@@ -46,12 +58,26 @@ export function ReportsScreen() {
     [jobs, selectedJobId],
   )
   const byId = useMemo(() => jobsById(jobs), [jobs])
-  const range = useMemo(() => periodRange(cursor, kind, settings), [cursor, kind, settings])
 
-  const periodShifts = useMemo(
-    () => forJob(shiftsInRange(liveShifts(shifts), range.start, range.end), selectedJobId),
-    [shifts, range.start, range.end, selectedJobId],
+  const pastInvoiceCount = selectedJobId ? invoicesForJob(invoices, selectedJobId).length : 0
+  const invoicePeriod = useMemo(() => {
+    if (kind !== 'payPeriod') return null
+    if (invoiceStep > 0 && selectedJobId) {
+      const past = invoicedPeriod(shifts, invoices, selectedJobId, invoiceStep - 1)
+      if (past) return past
+    }
+    return openPeriod(shifts, invoices, jobList.map((j) => j.id), now)
+  }, [kind, invoiceStep, selectedJobId, shifts, invoices, jobList, now])
+
+  const calendarRange = useMemo(() => periodRange(cursor, kind, settings), [cursor, kind, settings])
+  const range = invoicePeriod?.range ?? calendarRange
+
+  const calendarShifts = useMemo(
+    () =>
+      forJob(shiftsInRange(liveShifts(shifts), calendarRange.start, calendarRange.end), selectedJobId),
+    [shifts, calendarRange.start, calendarRange.end, selectedJobId],
   )
+  const periodShifts = invoicePeriod?.shifts ?? calendarShifts
   const breakdowns = useMemo(
     () => computeBreakdowns(periodShifts, byId, now),
     [periodShifts, byId, now],
@@ -127,19 +153,38 @@ export function ReportsScreen() {
         <button
           type="button"
           aria-label="Previous period"
-          onClick={() => setCursor((c) => shiftPeriod(c, kind, settings, -1))}
-          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press"
+          disabled={invoicePeriod !== null && invoiceStep >= pastInvoiceCount}
+          onClick={() =>
+            invoicePeriod
+              ? setInvoiceStep((s) => s + 1)
+              : setCursor((c) => shiftPeriod(c, kind, settings, -1))
+          }
+          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press disabled:opacity-35 disabled:pointer-events-none"
         >
           <ChevronLeft size={18} />
         </button>
-        <div className="t-label tabular text-center px-2 text-ink">
-          {formatRangeLabel(range, kind)}
+        <div className="text-center px-2">
+          <div className="t-label tabular text-ink">{formatRangeLabel(range, kind)}</div>
+          {invoicePeriod ? (
+            <div className="t-small text-muted tabular mt-0.5">
+              {invoicePeriod.invoice
+                ? `Invoiced ${money(invoicePeriod.invoice.amountAgorot, settings.currencySymbol)} · ${
+                    invoicePeriod.invoice.status === 'paid' ? 'Paid' : 'Awaiting payment'
+                  }`
+                : 'Not invoiced yet'}
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
           aria-label="Next period"
-          onClick={() => setCursor((c) => shiftPeriod(c, kind, settings, 1))}
-          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press"
+          disabled={invoicePeriod !== null && invoiceStep === 0}
+          onClick={() =>
+            invoicePeriod
+              ? setInvoiceStep((s) => s - 1)
+              : setCursor((c) => shiftPeriod(c, kind, settings, 1))
+          }
+          className="grid place-items-center size-9 rounded-full bg-surface edge text-brand press disabled:opacity-35 disabled:pointer-events-none"
         >
           <ChevronRight size={18} />
         </button>

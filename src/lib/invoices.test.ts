@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { invoicedThrough, jobBalances, previewInvoice } from './invoices'
+import { invoicedPeriod, invoicedThrough, jobBalances, openPeriod, previewInvoice } from './invoices'
 import type { Invoice, Job, Shift } from './types'
 
 const H = 3600_000
@@ -176,6 +176,82 @@ describe('previewInvoice', () => {
     const periodEnd = new Date(2026, 2, 30).getTime()
     const p = previewInvoice(shifts, [], byId(jobs), 'a', periodEnd, NOW)
     expect(p.amountAgorot).toBe(4 * 5000 + 2500)
+  })
+})
+
+describe('openPeriod', () => {
+  const ids = (p: { shifts: Shift[] }) => p.shifts.map((s) => s.id).sort()
+
+  it('opens the day after the last invoice, however many months back that is', () => {
+    const shifts = [shift('s1', 'a', 5, 8), shift('s2', 'a', 15, 4), shift('s3', 'a', 25, 6)]
+    const p = openPeriod(shifts, [invoice('i1', 'a', 10)], ['a'], NOW)
+    expect(p.range.start).toBe(new Date(2026, 2, 11).getTime())
+    expect(p.range.end).toBe(new Date(2026, 2, 31, 23, 59, 59, 999).getTime())
+    expect(ids(p)).toEqual(['s2', 's3'])
+    expect(p.invoice).toBeNull()
+  })
+
+  it('reaches back to the first shift when nothing has been invoiced', () => {
+    const shifts = [shift('s1', 'a', 5, 8), shift('s2', 'a', 15, 4)]
+    const p = openPeriod(shifts, [], ['a'], NOW)
+    expect(p.range.start).toBe(new Date(2026, 2, 5).getTime())
+    expect(ids(p)).toEqual(['s1', 's2'])
+  })
+
+  it('applies each job its own cutoff', () => {
+    const shifts = [shift('a1', 'a', 8, 4), shift('a2', 'a', 12, 4), shift('b1', 'b', 8, 4)]
+    // A claimed through the 10th, B through the 5th: B's shift on the 8th is outstanding,
+    // A's is not, even though the envelope starts before it.
+    const invoices = [invoice('i1', 'a', 10), invoice('i2', 'b', 5)]
+    const p = openPeriod(shifts, invoices, ['a', 'b'], NOW)
+    expect(p.range.start).toBe(new Date(2026, 2, 6).getTime())
+    expect(ids(p)).toEqual(['a2', 'b1'])
+  })
+
+  it('leaves out a job that has nothing outstanding when sizing the range', () => {
+    const shifts = [shift('a1', 'a', 20, 4), shift('b1', 'b', 2, 4)]
+    const invoices = [invoice('i1', 'a', 15), invoice('i2', 'b', 3)]
+    const p = openPeriod(shifts, invoices, ['a', 'b'], NOW)
+    expect(p.range.start).toBe(new Date(2026, 2, 16).getTime())
+  })
+
+  it('still opens after the last claim when nothing is outstanding', () => {
+    const p = openPeriod([shift('s1', 'a', 5, 8)], [invoice('i1', 'a', 10)], ['a'], NOW)
+    expect(p.shifts).toEqual([])
+    expect(p.range.start).toBe(new Date(2026, 2, 11).getTime())
+  })
+
+  it('ignores deleted shifts', () => {
+    const p = openPeriod([shift('s1', 'a', 20, 5, { deleted: true })], [], ['a'], NOW)
+    expect(p.shifts).toEqual([])
+  })
+})
+
+describe('invoicedPeriod', () => {
+  const shifts = [shift('s1', 'a', 3, 8), shift('s2', 'a', 12, 4), shift('s3', 'a', 25, 6)]
+  const invoices = [invoice('i1', 'a', 10), invoice('i2', 'a', 20, { status: 'paid' })]
+
+  it('covers from the invoice before it up to its own end', () => {
+    const p = invoicedPeriod(shifts, invoices, 'a', 0)!
+    expect(p.invoice?.id).toBe('i2')
+    expect(p.range.start).toBe(new Date(2026, 2, 11).getTime())
+    expect(p.range.end).toBe(invoices[1]!.periodEnd)
+    expect(p.shifts.map((s) => s.id)).toEqual(['s2'])
+  })
+
+  it('starts the first invoice at the first shift it covered', () => {
+    const p = invoicedPeriod(shifts, invoices, 'a', 1)!
+    expect(p.invoice?.id).toBe('i1')
+    expect(p.range.start).toBe(new Date(2026, 2, 3).getTime())
+    expect(p.shifts.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('is null past the oldest invoice', () => {
+    expect(invoicedPeriod(shifts, invoices, 'a', 2)).toBeNull()
+  })
+
+  it('only counts invoices for the asked-for job', () => {
+    expect(invoicedPeriod(shifts, [invoice('i1', 'b', 10)], 'a', 0)).toBeNull()
   })
 })
 

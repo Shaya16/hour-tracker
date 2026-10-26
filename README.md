@@ -16,7 +16,8 @@ and your laptop. Free to host on Cloudflare.
   buttons, with undo. No templates to set up: the suggestions come from your own history,
   so they stay right when your schedule changes.
 - **Reports** — hours and pay by week, month, or pay period, split by job, with a CSV
-  export for checking against a payslip.
+  export for checking against a payslip. A pay period runs from the last invoice, so it
+  shows exactly what is still unclaimed, and steps back through past invoices.
 - **Overtime, done properly** — per job, per day. Two 5-hour shifts at the same job cross
   the 8-hour threshold; 5 hours at each of two jobs does not, because they are separate
   employers. This is the whole reason the app exists.
